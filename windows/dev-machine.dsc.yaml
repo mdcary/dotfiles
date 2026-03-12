@@ -1,0 +1,1192 @@
+# yaml-language-server: $schema=https://aka.ms/configuration-dsc-schema/0.2
+
+properties:
+  configurationVersion: 0.2.0
+
+  resources:
+    #
+    # --- Packages (Windows side) ---
+    #
+    - resource: Microsoft.WinGet.DSC/WinGetPackage
+      id: Git
+      settings:
+        Id: Git.Git
+        Source: winget
+        Ensure: Present
+
+    - resource: Microsoft.WinGet.DSC/WinGetPackage
+      id: Neovim
+      settings:
+        Id: Neovim.Neovim
+        Source: winget
+        Ensure: Present
+
+    - resource: Microsoft.WinGet.DSC/WinGetPackage
+      id: Obsidian
+      directives:
+        description: Install Obsidian
+      settings:
+        Id: Obsidian.Obsidian
+        Source: winget
+        Ensure: Present
+
+    - resource: Microsoft.WinGet.DSC/WinGetPackage
+      id: AWSVPNClient
+      directives:
+        description: Install AWS VPN Client
+      settings:
+        Id: Amazon.AWSVPNClient
+        Source: winget
+        Ensure: Present
+
+    - resource: Microsoft.WinGet.DSC/WinGetPackage
+      id: Podman
+      settings:
+        Id: RedHat.Podman
+        Source: winget
+        Ensure: Present
+
+    - resource: Microsoft.WinGet.DSC/WinGetPackage
+      id: Ripgrep
+      settings:
+        Id: BurntSushi.ripgrep.MSVC
+        Source: winget
+        Ensure: Present
+
+    - resource: Microsoft.WinGet.DSC/WinGetPackage
+      id: fd
+      settings:
+        Id: sharkdp.fd
+        Source: winget
+        Ensure: Present
+
+    - resource: Microsoft.WinGet.DSC/WinGetPackage
+      id: fzf
+      settings:
+        Id: junegunn.fzf
+        Source: winget
+        Ensure: Present
+
+    - resource: Microsoft.WinGet.DSC/WinGetPackage
+      id: WindowsTerminal
+      settings:
+        Id: Microsoft.WindowsTerminal
+        Source: winget
+        Ensure: Present
+
+    - resource: Script
+      id: PrimeWindowsTerminalSettingsJson
+      dependsOn:
+        - WindowsTerminal
+      directives:
+        description: Launch Windows Terminal once (non-elevated) and wait for settings.json to exist
+      settings:
+        GetScript: |
+          @{ Result = "settings.json presence checked in TestScript." }
+        TestScript: |
+          $paths = @(
+            (Join-Path $env:LOCALAPPDATA "Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json"),
+            (Join-Path $env:LOCALAPPDATA "Packages\Microsoft.WindowsTerminalPreview_8wekyb3d8bbwe\LocalState\settings.json")
+          )
+          return [bool]($paths | Where-Object { Test-Path $_ } | Select-Object -First 1)
+        SetScript: |
+          $ErrorActionPreference = "Stop"
+
+          # Start Terminal (best-effort). It may already be running.
+          Start-Process "wt.exe" -WindowStyle Hidden -ErrorAction SilentlyContinue | Out-Null
+
+          $paths = @(
+            (Join-Path $env:LOCALAPPDATA "Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json"),
+            (Join-Path $env:LOCALAPPDATA "Packages\Microsoft.WindowsTerminalPreview_8wekyb3d8bbwe\LocalState\settings.json")
+          )
+
+          $deadline = (Get-Date).AddSeconds(20)
+          while ((Get-Date) -lt $deadline) {
+            $p = $paths | Where-Object { Test-Path $_ } | Select-Object -First 1
+            if ($p) { return }
+            Start-Sleep -Milliseconds 500
+          }
+
+          throw "Windows Terminal settings.json not created yet. Try launching Terminal once manually, then re-run winget configure."
+
+    - resource: Microsoft.WinGet.DSC/WinGetPackage
+      id: Chrome
+      settings:
+        Id: Google.Chrome
+        Source: winget
+        Ensure: Present
+
+    - resource: Microsoft.WinGet.DSC/WinGetPackage
+      id: 1Password
+      settings:
+        Id: AgileBits.1Password
+        Source: winget
+        Ensure: Present
+
+    - resource: Script
+      id: InstallPowerShellFzfIntegration
+      directives:
+        description: Install PSReadLine + PSFzf for better interactive PowerShell
+      settings:
+        GetScript: |
+          @{ Result = "Modules checked in TestScript." }
+        TestScript: |
+          $psrl = Get-Module -ListAvailable PSReadLine | Select-Object -First 1
+          $psfzf = Get-Module -ListAvailable PSFzf | Select-Object -First 1
+          return [bool]($psrl -and $psfzf)
+        SetScript: |
+          $ErrorActionPreference = "Stop"
+          if (-not (Get-PackageProvider -Name NuGet -ErrorAction SilentlyContinue)) {
+            Install-PackageProvider -Name NuGet -Force -Scope CurrentUser | Out-Host
+          }
+          Set-PSRepository -Name PSGallery -InstallationPolicy Trusted | Out-Host
+
+          Install-Module PSReadLine -Scope CurrentUser -Force | Out-Host
+          Install-Module PSFzf     -Scope CurrentUser -Force | Out-Host
+
+    - resource: Script
+      id: ConfigurePowerShellProfile
+      dependsOn:
+        - InstallPowerShellFzfIntegration
+        - Ripgrep
+        - fd
+        - fzf
+      directives:
+        description: Configure PowerShell profile for rg/fd/fzf quality-of-life
+      settings:
+        GetScript: |
+          @{ Result = "Profile checked in TestScript." }
+          TestScript: |
+            try {
+              $profilePath = $PROFILE
+              if ([string]::IsNullOrWhiteSpace($profilePath)) {
+                $profilePath = Join-Path $HOME "Documents\PowerShell\Microsoft.PowerShell_profile.ps1"
+              }
+              if (-not (Test-Path -LiteralPath $profilePath)) { return $false }
+
+              $c = Get-Content -LiteralPath $profilePath -Raw -ErrorAction Stop
+              if ($c -match "BEGIN DEV SHELL BASELINE") { return $true }
+              return $false
+            } catch {
+              return $false
+            }
+        SetScript: |
+          $ErrorActionPreference = "Stop"
+
+          $profilePath = $PROFILE
+          if ([string]::IsNullOrWhiteSpace($profilePath)) {
+            $profilePath = Join-Path $HOME "Documents\PowerShell\Microsoft.PowerShell_profile.ps1"
+          }
+
+          $dir = Split-Path -Parent $profilePath
+          New-Item -ItemType Directory -Force -Path $dir | Out-Null
+          if (-not (Test-Path $profilePath)) { New-Item -ItemType File -Force -Path $profilePath | Out-Null }
+
+          $block = @'
+          # BEGIN DEV SHELL BASELINE
+          Import-Module PSReadLine -ErrorAction SilentlyContinue
+          Import-Module PSFzf     -ErrorAction SilentlyContinue
+          Set-PsFzfOption -PSReadlineChordProvider 'Ctrl+t' -PSReadlineChordReverseHistory 'Ctrl+r' | Out-Null
+          Set-Alias rg  rg  -ErrorAction SilentlyContinue
+          Set-Alias fd  fd  -ErrorAction SilentlyContinue
+
+          function fcd {
+            $p = fd --type d --hidden --follow --exclude .git 2>$null | fzf
+            if ($p) { Set-Location $p }
+          }
+
+          function fkill {
+            $line = Get-Process | Sort-Object ProcessName | ForEach-Object { "{0}`t{1}" -f $_.Id,$_.ProcessName } | fzf
+            if ($line) { $pid = ($line -split "`t")[0]; Stop-Process -Id $pid -Force }
+          }
+
+          $env:RIPGREP_CONFIG_PATH = Join-Path $env:USERPROFILE ".ripgreprc"
+          if (-not (Test-Path $env:RIPGREP_CONFIG_PATH)) {
+            @"
+          --hidden
+          --follow
+          --glob=!.git/*
+          "@ | Set-Content -Encoding UTF8 $env:RIPGREP_CONFIG_PATH
+          }
+          # END DEV SHELL BASELINE
+          '@
+
+          $content = Get-Content $profilePath -Raw
+          if ($content -notmatch "BEGIN DEV SHELL BASELINE") {
+            Add-Content -Path $profilePath -Value "`n$block`n" -Encoding UTF8
+          }
+
+      #
+      # --- VS Code + extensions ---
+      #
+    - resource: Microsoft.WinGet.DSC/WinGetPackage
+      id: VSCode
+      settings:
+        Id: Microsoft.VisualStudioCode
+        Source: winget
+        Ensure: Present
+
+    - resource: Script
+      id: VSCodeExtensions
+      dependsOn:
+        - VSCode
+      settings:
+        GetScript: |
+          @{ Result = "Extension state checked in TestScript" }
+        TestScript: |
+          $code = (Get-Command code -ErrorAction SilentlyContinue)?.Source
+          if (-not $code) { return $false }
+          $exts = & $code --list-extensions 2>$null
+          $needed = @(
+            "ms-vscode-remote.remote-wsl",
+            "ms-python.python",
+            "esbenp.prettier-vscode",
+            "vscodevim.vim"
+          )
+          return (($needed | Where-Object { $exts -notcontains $_ }).Count -eq 0)
+        SetScript: |
+          $ErrorActionPreference = "Stop"
+          $code = (Get-Command code -ErrorAction SilentlyContinue)?.Source
+          if (-not $code) { throw "VS Code CLI (code) not found on PATH yet. Open VS Code once or restart your shell, then re-run winget configure." }
+
+          $needed = @(
+            "ms-vscode-remote.remote-wsl",
+            "ms-python.python",
+            "esbenp.prettier-vscode",
+            "vscodevim.vim"
+          )
+
+          $exts = & $code --list-extensions 2>$null
+          foreach ($e in $needed) {
+            if ($exts -notcontains $e) {
+              & $code --install-extension $e --force
+            }
+          }
+
+    #
+    # --- Node / Bun / Python / DuckDB ---
+    #
+    - resource: Microsoft.WinGet.DSC/WinGetPackage
+      id: NodeLTS
+      settings:
+        Id: OpenJS.NodeJS.LTS
+        Source: winget
+        Ensure: Present
+
+    - resource: Microsoft.WinGet.DSC/WinGetPackage
+      id: Bun
+      settings:
+        Id: Oven-sh.Bun
+        Source: winget
+        Ensure: Present
+
+    - resource: Microsoft.WinGet.DSC/WinGetPackage
+      id: uv
+      settings:
+        Id: astral-sh.uv
+        Source: winget
+        Ensure: Present
+
+    - resource: Microsoft.WinGet.DSC/WinGetPackage
+      id: DuckDB
+      settings:
+        Id: DuckDB.cli
+        Source: winget
+        Ensure: Present
+
+    - resource: Microsoft.WinGet.DSC/WinGetPackage
+      id: VCRedist
+      settings:
+        Id: Microsoft.VCRedist.2015+.x64
+        Source: winget
+        Ensure: Present
+
+    #
+    # --- .NET SDK ---
+    #
+    - resource: Microsoft.WinGet.DSC/WinGetPackage
+      id: DotNetSDK10
+      settings:
+        Id: Microsoft.DotNet.SDK.10
+        Source: winget
+        Ensure: Present
+
+    #
+    # --- Fonts + desktop apps ---
+    #
+    - resource: Microsoft.WinGet.DSC/WinGetPackage
+      id: JetBrainsMonoNerdFont
+      settings:
+        Id: DEVCOM.JetBrainsMonoNerdFont
+        Source: winget
+        Ensure: Present
+
+    - resource: Microsoft.WinGet.DSC/WinGetPackage
+      id: ClaudeDesktop
+      settings:
+        Id: Anthropic.Claude
+        Source: winget
+        Ensure: Present
+
+    - resource: Microsoft.WinGet.DSC/WinGetPackage
+      id: ChatGPTDesktop
+      settings:
+        Id: 9NT1R1C2HH7J
+        Source: msstore
+        Ensure: Present
+
+    - resource: Microsoft.WinGet.DSC/WinGetPackage
+      id: PowerToys
+      settings:
+        Id: Microsoft.PowerToys
+        Source: winget
+        Ensure: Present
+
+    - resource: Microsoft.WinGet.DSC/WinGetPackage
+      id: PowerShell
+      directives:
+        description: Install PowerShell (latest stable)
+      settings:
+        Id: Microsoft.PowerShell
+        Source: winget
+        Ensure: Present
+
+    #
+    # --- CapsLock -> Ctrl
+    #
+    - resource: Script
+      id: RemapCapsLockToCtrl_ScancodeMap
+      directives:
+        description: Remap CapsLock to Left Control via Scancode Map (requires reboot)
+        securityContext: elevated
+      settings:
+        GetScript: |
+          @{ Result = "ScancodeMap checked in TestScript." }
+        TestScript: |
+          $k = "HKLM:\SYSTEM\CurrentControlSet\Control\Keyboard Layout"
+          try {
+            $v = (Get-ItemProperty -Path $k -Name "Scancode Map" -ErrorAction Stop)."Scancode Map"
+          } catch { return $false }
+
+          # Expected bytes: map Caps (0x3A) -> LCtrl (0x1D)
+          $expected = [byte[]](
+            0x00,0x00,0x00,0x00, 0x00,0x00,0x00,0x00,
+            0x02,0x00,0x00,0x00,
+            0x1D,0x00,0x3A,0x00,
+            0x00,0x00,0x00,0x00
+          )
+
+          if ($v.Length -ne $expected.Length) { return $false }
+          for ($i=0; $i -lt $expected.Length; $i++) {
+            if ($v[$i] -ne $expected[$i]) { return $false }
+          }
+          return $true
+        SetScript: |
+          $ErrorActionPreference = "Stop"
+          $k = "HKLM:\SYSTEM\CurrentControlSet\Control\Keyboard Layout"
+          New-Item -Path $k -Force | Out-Null
+
+          $bytes = [byte[]](
+            0x00,0x00,0x00,0x00, 0x00,0x00,0x00,0x00,
+            0x02,0x00,0x00,0x00,
+            0x1D,0x00,0x3A,0x00,
+            0x00,0x00,0x00,0x00
+          )
+
+          New-ItemProperty -Path $k -Name "Scancode Map" -PropertyType Binary -Value $bytes -Force | Out-Null
+          Write-Host "CapsLock remapped. Reboot required."
+
+    #
+    # --- Touchpad gestures: 3-finger swipe Back/Forward ---
+    # Windows built-in 3-finger swipes don't support "Back/Forward" directly; install GestureSign and let it own the gesture.
+    #
+    - resource: Microsoft.WinGet.DSC/WinGetPackage
+      id: GestureSign
+      directives:
+        description: GestureSign enables custom Precision Touchpad gestures (map 3-finger left/right to Alt+Left/Alt+Right)
+      settings:
+        Id: TransposonY.GestureSign
+        Source: winget
+        Ensure: Present
+
+    - resource: Registry
+      id: TouchpadThreeFingerSwipeToNothing
+      directives:
+        description: Set built-in 3-finger swipes to Nothing so GestureSign can handle custom back/forward
+      settings:
+        Key: "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\PrecisionTouchPad"
+        ValueName: "ThreeFingerSlideEnabled"
+        ValueType: Dword
+        # 0 = Nothing (per ElevenForum reg file)
+        ValueData: 0
+        Ensure: Present
+        Force: true
+
+    #
+    # --- Taskbar/UX tweaks (registry-based) ---
+    #
+    - resource: Registry
+      id: TaskbarAlignLeft
+      settings:
+        Key: "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced"
+        ValueName: "TaskbarAl"
+        ValueType: Dword
+        ValueData: 0
+        Ensure: Present
+        Force: true
+
+    - resource: Registry
+      id: HideWidgets
+      settings:
+        Key: "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced"
+        ValueName: "TaskbarDa"
+        ValueType: Dword
+        ValueData: 0
+        Ensure: Present
+        Force: true
+
+    - resource: Registry
+      id: HideCopilotButton
+      settings:
+        Key: "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced"
+        ValueName: "ShowCopilotButton"
+        ValueType: Dword
+        ValueData: 0
+        Ensure: Present
+        Force: true
+
+    - resource: Registry
+      id: ExplorerShowFileExtensions
+      settings:
+        Key: "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced"
+        ValueName: "HideFileExt"
+        ValueType: Dword
+        ValueData: 0   # 0 = show extensions
+        Ensure: Present
+        Force: true
+
+    - resource: Registry
+      id: ExplorerShowHiddenFiles
+      settings:
+        Key: "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced"
+        ValueName: "Hidden"
+        ValueType: Dword
+        ValueData: 1   # 1 = show hidden files
+        Ensure: Present
+        Force: true
+
+    - resource: Registry
+      id: ExplorerShowProtectedOSFiles
+      settings:
+        Key: "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced"
+        ValueName: "ShowSuperHidden"
+        ValueType: Dword
+        ValueData: 1
+        Ensure: Present
+        Force: true
+
+    - resource: Registry
+      id: ExplorerOpenToThisPC
+      settings:
+        Key: "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced"
+        ValueName: "LaunchTo"
+        ValueType: Dword
+        ValueData: 1   # 1 = This PC, 2 = Quick Access, 3 = Home
+        Ensure: Present
+        Force: true
+
+    - resource: Registry
+      id: ExplorerDisableRecentFiles
+      settings:
+        Key: "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer"
+        ValueName: "ShowRecent"
+        ValueType: Dword
+        ValueData: 0
+        Ensure: Present
+        Force: true
+
+    - resource: Registry
+      id: ExplorerDisableFrequentFolders
+      settings:
+        Key: "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer"
+        ValueName: "ShowFrequent"
+        ValueType: Dword
+        ValueData: 0
+        Ensure: Present
+        Force: true
+
+    - resource: Registry
+      id: ExplorerShowFullPath
+      settings:
+        Key: "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\CabinetState"
+        ValueName: "FullPath"
+        ValueType: Dword
+        ValueData: 1
+        Ensure: Present
+        Force: true
+
+    - resource: Registry
+      id: ExplorerSuppressHiddenFileWarning
+      settings:
+        Key: "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced"
+        ValueName: "ShowInfoTip"
+        ValueType: Dword
+        ValueData: 0
+        Ensure: Present
+        Force: true
+
+    - resource: Registry
+      id: ExplorerUseCheckboxes
+      settings:
+        Key: "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced"
+        ValueName: "AutoCheckSelect"
+        ValueType: Dword
+        ValueData: 1
+        Ensure: Present
+        Force: true
+
+    - resource: Registry
+      id: ExplorerDisableCompactView
+      settings:
+        Key: "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced"
+        ValueName: "UseCompactMode"
+        ValueType: Dword
+        ValueData: 0
+        Ensure: Present
+        Force: true
+
+    - resource: Registry
+      id: AddOpenInTerminalContextMenu
+      settings:
+        Key: "HKEY_CLASSES_ROOT\\Directory\\Background\\shell\\OpenWT"
+        ValueName: "MUIVerb"
+        ValueType: String
+        ValueData: "Open in Terminal"
+        Ensure: Present
+        Force: true
+
+    - resource: Registry
+      id: AddOpenInTerminalContextMenuIcon
+      settings:
+        Key: "HKEY_CLASSES_ROOT\\Directory\\Background\\shell\\OpenWT"
+        ValueName: "Icon"
+        ValueType: String
+        ValueData: "wt.exe"
+        Ensure: Present
+        Force: true
+
+    - resource: Registry
+      id: AddOpenInTerminalContextMenuCommand
+      settings:
+        Key: "HKEY_CLASSES_ROOT\\Directory\\Background\\shell\\OpenWT\\command"
+        ValueName: ""
+        ValueType: String
+        ValueData: "wt.exe"
+        Ensure: Present
+        Force: true
+
+    - resource: Registry
+      id: DisableOneDriveStartup
+      settings:
+        Key: "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Run"
+        ValueName: "OneDrive"
+        Ensure: Absent
+
+    - resource: Script
+      id: UnpinTaskbarItems
+      directives:
+        description: Unpin Recall and Microsoft 365/Office from the taskbar (best-effort)
+      settings:
+        GetScript: |
+          @{ Result = "Checked in TestScript." }
+        TestScript: |
+          $p = Join-Path $env:APPDATA "Microsoft\Internet Explorer\Quick Launch\User Pinned\TaskBar"
+          if (-not (Test-Path $p)) { return $true }
+
+          $links = Get-ChildItem $p -Filter *.lnk -ErrorAction SilentlyContinue
+          $hits = $links | Where-Object {
+            $_.BaseName -match 'Recall' -or $_.BaseName -match 'Microsoft 365' -or $_.BaseName -match 'Office'
+          }
+          return ($hits.Count -eq 0)
+        SetScript: |
+          $ErrorActionPreference = "Stop"
+
+          # 1) Remove classic pinned shortcuts
+          $p = Join-Path $env:APPDATA "Microsoft\Internet Explorer\Quick Launch\User Pinned\TaskBar"
+          if (Test-Path $p) {
+            Get-ChildItem $p -Filter *.lnk -ErrorAction SilentlyContinue |
+              Where-Object { $_.BaseName -match 'Recall' -or $_.BaseName -match 'Microsoft 365' -or $_.BaseName -match 'Office' } |
+              Remove-Item -Force -ErrorAction SilentlyContinue
+          }
+
+          # 2) Clear taskbar pin cache (forces refresh/rebuild)
+          $taskband = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Taskband"
+          if (Test-Path $taskband) {
+            Remove-ItemProperty -Path $taskband -Name "Favorites" -ErrorAction SilentlyContinue
+            Remove-ItemProperty -Path $taskband -Name "FavoritesResolve" -ErrorAction SilentlyContinue
+          }
+
+          # Explorer restart handled by your centralized RestartExplorerIfUxChangesApplied
+          Write-Host "Pins updated. If they reappear after logon, check for OEM/policy taskbar pinning."
+
+    #
+    # --- Set Windows Terminal as default terminal host ---
+    #
+    - resource: Registry
+      id: SetDefaultTerminalDelegationTerminal
+      dependsOn:
+        - WindowsTerminal
+      settings:
+        Key: "HKEY_CURRENT_USER\\Console\\%%Startup"
+        ValueName: "DelegationTerminal"
+        ValueType: String
+        ValueData: "{9F156763-7844-4DC4-B2B1-901F640F5155}"
+        Ensure: Present
+        Force: true
+
+    - resource: Registry
+      id: SetDefaultTerminalDelegationConsole
+      dependsOn:
+        - WindowsTerminal
+      settings:
+        Key: "HKEY_CURRENT_USER\\Console\\%%Startup"
+        ValueName: "DelegationConsole"
+        ValueType: String
+        ValueData: "{9F156763-7844-4DC4-B2B1-901F640F5155}"
+        Ensure: Present
+        Force: true
+
+    - resource: Script
+      id: InstallCaskaydiaCoveNerdFont
+      directives:
+        description: Install CaskaydiaCove Nerd Font (NF + NF Mono) for Starship glyphs
+      settings:
+        GetScript: |
+          @{ Result = "CaskaydiaCove NF install checked." }
+
+        TestScript: |
+          try {
+            $fontsKey = "HKCU:\Software\Microsoft\Windows NT\CurrentVersion\Fonts"
+            $names = @(
+              "CaskaydiaCove Nerd Font Complete.ttf",
+              "CaskaydiaCove Nerd Font Mono Complete.ttf"
+            )
+
+            foreach ($n in $names) {
+              $v = (Get-ItemProperty -Path $fontsKey -ErrorAction SilentlyContinue).$n
+              if (-not $v) { return $false }
+              $p = if ($v -match '^[A-Za-z]:\\') { $v } else { Join-Path $env:LOCALAPPDATA "Microsoft\Windows\Fonts\$v" }
+              if (-not (Test-Path $p)) { return $false }
+            }
+            return $true
+          } catch { return $false }
+
+        SetScript: |
+          $ErrorActionPreference = "Stop"
+          $ProgressPreference = "SilentlyContinue"
+
+          # 1) Find latest Nerd Fonts release + CaskaydiaCove.zip
+          $rel = Invoke-RestMethod -Uri "https://api.github.com/repos/ryanoasis/nerd-fonts/releases/latest"
+          $asset = $rel.assets | Where-Object { $_.name -eq "CaskaydiaCove.zip" } | Select-Object -First 1
+          if (-not $asset) { throw "Could not find CaskaydiaCove.zip in latest Nerd Fonts release." }
+
+          # 2) Download + extract
+          $zip = Join-Path $env:TEMP "CaskaydiaCove.zip"
+          Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $zip -UseBasicParsing
+
+          $extract = Join-Path $env:TEMP ("CaskaydiaCove-" + [guid]::NewGuid().ToString("N"))
+          New-Item -ItemType Directory -Force -Path $extract | Out-Null
+          Expand-Archive -Path $zip -DestinationPath $extract -Force
+
+          # 3) Install for current user (no admin)
+          $dest = Join-Path $env:LOCALAPPDATA "Microsoft\Windows\Fonts"
+          New-Item -ItemType Directory -Force -Path $dest | Out-Null
+
+          $fontsKey = "HKCU:\Software\Microsoft\Windows NT\CurrentVersion\Fonts"
+
+          $ttfs = Get-ChildItem -Path $extract -Recurse -Filter *.ttf |
+            Where-Object { $_.Name -match 'Complete' }  # includes NF + NF Mono Complete variants
+
+          foreach ($f in $ttfs) {
+            $target = Join-Path $dest $f.Name
+            Copy-Item -Path $f.FullName -Destination $target -Force
+
+            # Register file so it shows up immediately in font pickers
+            New-ItemProperty -Path $fontsKey -Name $f.Name -PropertyType String -Value $f.Name -Force | Out-Null
+          }
+    - resource: Script
+      id: SetWindowsTerminalFontToCaskaydiaCoveNF
+      dependsOn:
+        - InstallCaskaydiaCoveNerdFont
+        - WindowsTerminal
+        - PrimeWindowsTerminalSettingsJson
+      directives:
+        description: Set Windows Terminal default font to CaskaydiaCove NF
+      settings:
+        GetScript: |
+          @{ Result = "Terminal font checked." }
+
+        TestScript: |
+          $p = Join-Path $env:LOCALAPPDATA "Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json"
+          if (-not (Test-Path $p)) { return $false }
+          $wt = Get-Content $p -Raw | ConvertFrom-Json
+
+          $defaults = $wt.profiles.defaults
+          if (-not $defaults) { return $false }
+
+          return ($defaults.font.face -eq "CaskaydiaCove NF" -or $defaults.fontFace -eq "CaskaydiaCove NF")
+
+        SetScript: |
+          $ErrorActionPreference = "Stop"
+
+          $p = Join-Path $env:LOCALAPPDATA "Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json"
+          if (-not (Test-Path $p)) { throw "Windows Terminal settings.json not found yet." }
+
+          $wt = Get-Content $p -Raw | ConvertFrom-Json
+
+          if (-not $wt.profiles) { $wt | Add-Member -Force NoteProperty profiles ([pscustomobject]@{}) }
+          if (-not $wt.profiles.defaults) { $wt.profiles | Add-Member -Force NoteProperty defaults ([pscustomobject]@{}) }
+
+          # Newer WT uses profiles.defaults.font.face
+          if (-not $wt.profiles.defaults.font) {
+            $wt.profiles.defaults | Add-Member -Force NoteProperty font ([pscustomobject]@{ face = "CaskaydiaCove NF" })
+          } else {
+            $wt.profiles.defaults.font | Add-Member -Force NoteProperty face "CaskaydiaCove NF"
+          }
+
+          ($wt | ConvertTo-Json -Depth 100) | Set-Content -Encoding UTF8 $p
+    #
+    # --- Enable WSL Windows features (no Microsoft.Windows.Developer DSC required) ---
+    # NOTE: This generally requires a reboot before WSL/Ubuntu install will succeed.
+    #
+    - resource: Script
+      id: EnableWSLWindowsFeatures
+      directives:
+        description: Enable WSL + VirtualMachinePlatform via DISM (requires reboot)
+        securityContext: elevated
+      settings:
+        GetScript: |
+          @{ Result = "WSL feature state checked via TestScript." }
+        TestScript: |
+          $wsl = (dism /online /get-featureinfo /featurename:Microsoft-Windows-Subsystem-Linux) -join "`n"
+          $vmp = (dism /online /get-featureinfo /featurename:VirtualMachinePlatform) -join "`n"
+          $wslEnabled = $wsl -match 'State\s*:\s*Enabled'
+          $vmpEnabled = $vmp -match 'State\s*:\s*Enabled'
+          return ($wslEnabled -and $vmpEnabled)
+        SetScript: |
+          $ErrorActionPreference = "Stop"
+          dism /online /enable-feature /featurename:Microsoft-Windows-Subsystem-Linux /all /norestart
+          dism /online /enable-feature /featurename:VirtualMachinePlatform /all /norestart
+
+    - resource: Script
+      id: InstallUbuntuWSL
+      dependsOn:
+        - EnableWSLWindowsFeatures
+      directives:
+        description: Install Ubuntu distro into WSL if missing
+        securityContext: elevated
+      settings:
+        GetScript: |
+          @{ Result = "WSL distro install state checked via TestScript." }
+        TestScript: |
+          $distros = & wsl.exe -l -q 2>$null
+          if ($LASTEXITCODE -ne 0) { return $false }
+          return [bool]($distros | Where-Object { $_ -match '^Ubuntu' })
+        SetScript: |
+          $ErrorActionPreference = "Stop"
+
+          # Ensure WSL2 default
+          wsl --set-default-version 2
+
+          # If Ubuntu not installed, install explicitly via wsl --install
+          $distros = wsl -l -q 2>$null
+          if (-not ($distros | Where-Object { $_ -match '^Ubuntu' })) {
+              wsl --install Ubuntu --no-launch
+          }
+
+    # PODMAN
+    - resource: Script
+      id: EnsurePodmanMachineReady
+      dependsOn:
+        - Podman
+      directives:
+        description: Ensure podman-machine-default exists, is rootful, and running (Podman 5.x / WSL)
+      settings:
+        GetScript: |
+          @{ Result = "Checked in TestScript." }
+
+        TestScript: |
+          try {
+            $raw = & podman machine inspect --format json 2>$null
+            if (-not $raw) { return $false }
+
+            $txt = ($raw | Out-String).Trim()
+            if (-not ($txt.StartsWith("{") -or $txt.StartsWith("["))) { return $false }
+
+            $m = $txt | ConvertFrom-Json
+            if ($m -is [System.Array]) { $m = $m | Select-Object -First 1 }
+            if (-not $m) { return $false }
+
+            $running = $false
+            if ($m.State) {
+              if ($m.State -is [string]) { $running = ($m.State -match 'running') }
+              elseif ($m.State.Running -ne $null) { $running = [bool]$m.State.Running }
+            }
+
+            $rootful = $false
+            if ($m.Host) {
+              if ($m.Host.Rootful -ne $null) { $rootful = [bool]$m.Host.Rootful }
+              elseif ($m.Host.UserMode -ne $null) { $rootful = (-not [bool]$m.Host.UserMode) }
+            }
+
+            return ($running -and $rootful)
+          } catch {
+            return $false
+          }
+
+        SetScript: |
+          $ErrorActionPreference = "Stop"
+          $ProgressPreference = "SilentlyContinue"
+
+          function Get-MachinesJson {
+            $raw = & podman machine ls --format json 2>$null
+            $txt = ($raw | Out-String).Trim()
+            if (-not $txt) { return @() }
+            if (-not ($txt.StartsWith("{") -or $txt.StartsWith("["))) { return @() }
+            $j = $txt | ConvertFrom-Json
+            if ($j -isnot [System.Array]) { $j = @($j) }
+            return $j
+          }
+
+          $machines = Get-MachinesJson
+          if (-not ($machines | Where-Object { $_.Name -eq "podman-machine-default" })) {
+            # init can be slow/flaky; retry once
+            $ok = $false
+            for ($attempt = 1; $attempt -le 2; $attempt++) {
+              try {
+                Write-Host "podman machine init (attempt $attempt)..."
+                & podman machine init 2>&1 | Out-Host
+                $ok = $true
+                break
+              } catch {
+                Write-Host "init failed: $($_.Exception.Message)"
+                try { & podman machine rm -f podman-machine-default 2>$null | Out-Null } catch {}
+                Start-Sleep -Seconds 3
+              }
+            }
+            if (-not $ok) { throw "podman machine init failed twice." }
+          }
+
+          # Stop before toggling rootful
+          try { & podman machine stop 2>$null | Out-Null } catch {}
+
+          & podman machine set --rootful 2>&1 | Out-Host
+          & podman machine start 2>&1 | Out-Host
+
+    - resource: Script
+      id: ConfigureUbuntuToUsePodmanMachine
+      dependsOn:
+        - EnsurePodmanMachineReady
+        - InstallUbuntuWSL
+      directives:
+        description: Configure Ubuntu WSL to use podman-machine-default as remote
+      settings:
+        GetScript: |
+          @{ Result = "Checked in TestScript." }
+        TestScript: |
+          & wsl -d Ubuntu -- bash -lc "podman info >/dev/null 2>&1"
+          return ($LASTEXITCODE -eq 0)
+        SetScript: |
+          $ErrorActionPreference = "Stop"
+
+          # Get connection URI from Windows podman
+          $conn = podman system connection list --format json | ConvertFrom-Json |
+            Where-Object { $_.Name -eq "podman-machine-default" } |
+            Select-Object -First 1
+
+          if (-not $conn) { throw "podman-machine-default connection not found." }
+
+          $uri = $conn.URI
+
+          # Install podman-remote inside Ubuntu (client only, lightweight)
+          wsl -d Ubuntu -- bash -lc "sudo apt-get update -y && sudo apt-get install -y podman-remote"
+
+          # Configure connection inside Ubuntu
+          wsl -d Ubuntu -- bash -lc @"
+          set -e
+          podman system connection add podman-machine-default '$uri' --default || true
+          "@
+
+    #
+    # --- Windows Terminal settings.json permissions fix ---
+    # Prevents "We could not write to your settings file" by ensuring settings.json isn't read-only and ACLs are sane.
+    # IMPORTANT: Do NOT run elevated; we want the file owned/writable by the interactive user.
+    #
+    - resource: Script
+      id: FixWindowsTerminalSettingsPermissions
+      dependsOn:
+        - WindowsTerminal
+      directives:
+        description: Ensure Windows Terminal settings.json is writable by current user
+      settings:
+        GetScript: |
+          @{ Result = "Settings permissions checked in TestScript." }
+        TestScript: |
+          $p = Join-Path $env:LOCALAPPDATA "Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json"
+          if (-not (Test-Path $p)) { return $false }
+          $item = Get-Item $p
+          if ($item.Attributes -band [IO.FileAttributes]::ReadOnly) { return $false }
+          try {
+            $fs = [System.IO.File]::Open($p,[System.IO.FileMode]::Open,[System.IO.FileAccess]::ReadWrite,[System.IO.FileShare]::Read)
+            $fs.Close()
+            return $true
+          } catch {
+            return $false
+          }
+        SetScript: |
+          $p = Join-Path $env:LOCALAPPDATA "Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json"
+          if (-not (Test-Path $p)) {
+            throw "settings.json not found yet. Launch Windows Terminal once, then rerun winget configure."
+          }
+          attrib -r $p
+          icacls $p /reset | Out-Host
+
+    #
+    # --- Windows Terminal: Catppuccin schemes + themes + defaults ---
+    #
+    - resource: Script
+      id: InstallCatppuccinSchemes
+      dependsOn:
+        - FixWindowsTerminalSettingsPermissions
+      directives:
+        description: Merge Catppuccin schemes + themes into Windows Terminal settings.json (latte/frappe/macchiato/mocha)
+      settings:
+        GetScript: |
+          @{ Result = "Merges Catppuccin schemes/themes if missing." }
+        TestScript: |
+          $settingsPath = Join-Path $env:LOCALAPPDATA "Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json"
+          if (-not (Test-Path $settingsPath)) { return $false }
+
+          $wt = Get-Content $settingsPath -Raw | ConvertFrom-Json
+          $schemeNames = @($wt.schemes | ForEach-Object { $_.name })
+          $themeNames  = @($wt.themes  | ForEach-Object { $_.name })
+
+          $needed = @("Catppuccin Mocha","Catppuccin Macchiato","Catppuccin Frappe","Catppuccin Latte")
+          $missingSchemes = ($needed | Where-Object { $schemeNames -notcontains $_ }).Count
+          $missingThemes  = ($needed | Where-Object { $themeNames  -notcontains $_ }).Count
+
+          return (($missingSchemes -eq 0) -and ($missingThemes -eq 0))
+        SetScript: |
+          $ErrorActionPreference = "Stop"
+
+          $settingsPath = Join-Path $env:LOCALAPPDATA "Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json"
+          if (-not (Test-Path $settingsPath)) {
+            throw "Windows Terminal settings.json not found yet. Launch Windows Terminal once, then re-run winget configure."
+          }
+
+          $base = "https://raw.githubusercontent.com/catppuccin/windows-terminal/refs/heads/main"
+
+          $flavors = @(
+            @{ key = "latte";     name = "Catppuccin Latte" },
+            @{ key = "frappe";    name = "Catppuccin Frappe" },
+            @{ key = "macchiato"; name = "Catppuccin Macchiato" },
+            @{ key = "mocha";     name = "Catppuccin Mocha" }
+          )
+
+          $schemesToAdd = @()
+          $themesToAdd  = @()
+
+          foreach ($f in $flavors) {
+            $schemeUrl = "$base/$($f.key).json"
+            $themeUrl  = "$base/$($f.key)Theme.json"
+
+            $scheme = (Invoke-WebRequest -Uri $schemeUrl -UseBasicParsing).Content | ConvertFrom-Json
+            $theme  = (Invoke-WebRequest -Uri $themeUrl  -UseBasicParsing).Content | ConvertFrom-Json
+
+            $schemesToAdd += $scheme
+            $themesToAdd  += $theme
+          }
+
+          $wt = Get-Content $settingsPath -Raw | ConvertFrom-Json
+
+          if (-not $wt.schemes) { $wt | Add-Member -Force -MemberType NoteProperty -Name schemes -Value @() }
+          if (-not $wt.themes)  { $wt | Add-Member -Force -MemberType NoteProperty -Name themes  -Value @() }
+
+          $existingSchemes = @($wt.schemes)
+          $existingThemes  = @($wt.themes)
+
+          foreach ($s in $schemesToAdd) {
+            if (-not ($existingSchemes | Where-Object { $_.name -eq $s.name })) {
+              $existingSchemes += $s
+            }
+          }
+
+          foreach ($t in $themesToAdd) {
+            if (-not ($existingThemes | Where-Object { $_.name -eq $t.name })) {
+              $existingThemes += $t
+            }
+          }
+
+          $wt.schemes = $existingSchemes
+          $wt.themes  = $existingThemes
+
+          ($wt | ConvertTo-Json -Depth 100) | Set-Content -Encoding UTF8 $settingsPath
+
+    - resource: Script
+      id: SetTerminalCatppuccinMochaDefault
+      dependsOn:
+        - InstallCatppuccinSchemes
+      directives:
+        description: Set Windows Terminal default theme + default profile scheme to Catppuccin Mocha
+      settings:
+        GetScript: |
+          @{ Result = "Terminal default theme/scheme checked in TestScript." }
+        TestScript: |
+          $settingsPath = Join-Path $env:LOCALAPPDATA "Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json"
+          if (-not (Test-Path $settingsPath)) { return $false }
+
+          $wt = Get-Content $settingsPath -Raw | ConvertFrom-Json
+
+          $themeOk = ($wt.theme -eq "Catppuccin Mocha")
+
+          $schemeOk = $false
+          if ($wt.defaultProfile) {
+            $p = $wt.profiles.list | Where-Object { $_.guid -eq $wt.defaultProfile } | Select-Object -First 1
+            if ($p -and $p.colorScheme -eq "Catppuccin Mocha") { $schemeOk = $true }
+          }
+
+          return ($themeOk -and $schemeOk)
+        SetScript: |
+          $ErrorActionPreference = "Stop"
+
+          $settingsPath = Join-Path $env:LOCALAPPDATA "Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json"
+          if (-not (Test-Path $settingsPath)) {
+            throw "Windows Terminal settings.json not found yet. Launch Windows Terminal once, then re-run winget configure."
+          }
+
+          $wt = Get-Content $settingsPath -Raw | ConvertFrom-Json
+
+          $wt | Add-Member -Force -MemberType NoteProperty -Name theme -Value "Catppuccin Mocha"
+
+          if ($wt.defaultProfile -and $wt.profiles -and $wt.profiles.list) {
+            $idx = -1
+            for ($i = 0; $i -lt $wt.profiles.list.Count; $i++) {
+              if ($wt.profiles.list[$i].guid -eq $wt.defaultProfile) { $idx = $i; break }
+            }
+            if ($idx -ge 0) {
+              $wt.profiles.list[$idx] | Add-Member -Force -MemberType NoteProperty -Name colorScheme -Value "Catppuccin Mocha"
+            }
+          }
+
+          ($wt | ConvertTo-Json -Depth 100) | Set-Content -Encoding UTF8 $settingsPath
+
+    - resource: Script
+      id: ConfigureWindowsTerminalQuakeBinding
+      dependsOn:
+        - InstallCatppuccinSchemes
+      directives:
+        description: Bind Ctrl+/ to Windows Terminal quake mode
+      settings:
+        GetScript: |
+          @{ Result = "Quake binding checked in TestScript." }
+        TestScript: |
+          $paths = @(
+            (Join-Path $env:LOCALAPPDATA "Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json"),
+            (Join-Path $env:LOCALAPPDATA "Packages\Microsoft.WindowsTerminalPreview_8wekyb3d8bbwe\LocalState\settings.json")
+          )
+          $settingsPath = $paths | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $settingsPath) { return $false }
+
+          $wt = Get-Content $settingsPath -Raw | ConvertFrom-Json
+
+          $actions = @()
+          if ($wt.actions) { $actions = @($wt.actions) }
+
+          $hit = $actions | Where-Object {
+            $_.command -eq "quakeMode" -and $_.keys -contains "ctrl+/"
+          } | Select-Object -First 1
+
+          return [bool]$hit
+        SetScript: |
+          $ErrorActionPreference = "Stop"
+
+          $paths = @(
+            (Join-Path $env:LOCALAPPDATA "Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json"),
+            (Join-Path $env:LOCALAPPDATA "Packages\Microsoft.WindowsTerminalPreview_8wekyb3d8bbwe\LocalState\settings.json")
+          )
+          $settingsPath = $paths | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $settingsPath) { throw "Windows Terminal settings.json not found yet." }
+
+          $wt = Get-Content $settingsPath -Raw | ConvertFrom-Json
+
+          if (-not $wt.actions) { $wt | Add-Member -Force -MemberType NoteProperty -Name actions -Value @() }
+
+          $actions = @($wt.actions)
+
+          $exists = $actions | Where-Object { $_.command -eq "quakeMode" -and ($_.keys -contains "ctrl+/") } | Select-Object -First 1
+          if (-not $exists) {
+            $actions += [pscustomobject]@{
+              command = "quakeMode"
+              keys    = @("ctrl+/")
+            }
+          }
+
+          $wt.actions = $actions
+          ($wt | ConvertTo-Json -Depth 100) | Set-Content -Encoding UTF8 $settingsPath
+
+    - resource: Script
+      id: SetTerminalDefaultProfileUbuntu
+      dependsOn:
+        - InstallUbuntuWSL
+        - SetTerminalCatppuccinMochaDefault
+      directives:
+        description: Set Windows Terminal default profile to Ubuntu (WSL) when installed
+      settings:
+        GetScript: |
+          @{ Result = "Ubuntu default profile checked in TestScript." }
+        TestScript: |
+          $settingsPath = Join-Path $env:LOCALAPPDATA "Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json"
+          if (-not (Test-Path $settingsPath)) { return $false }
+
+          $wt = Get-Content $settingsPath -Raw | ConvertFrom-Json
+          if (-not $wt.profiles -or -not $wt.profiles.list) { return $false }
+
+          $ubuntu = $wt.profiles.list | Where-Object {
+            $_.name -match '^Ubuntu' -or $_.source -eq 'Windows.Terminal.Wsl'
+          } | Select-Object -First 1
+
+          if (-not $ubuntu) { return $false }
+
+          return ($wt.defaultProfile -eq $ubuntu.guid)
+        SetScript: |
+          $ErrorActionPreference = "Stop"
+
+          $settingsPath = Join-Path $env:LOCALAPPDATA "Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json"
+          if (-not (Test-Path $settingsPath)) {
+            throw "Windows Terminal settings.json not found yet. Launch Windows Terminal once, then re-run winget configure."
+          }
+
+          $wt = Get-Content $settingsPath -Raw | ConvertFrom-Json
+          if (-not $wt.profiles -or -not $wt.profiles.list) {
+            throw "Windows Terminal profiles list not found in settings.json."
+          }
+
+          $ubuntu = $wt.profiles.list | Where-Object { $_.source -eq 'Windows.Terminal.Wsl' } | Select-Object -First 1
+          if (-not $ubuntu) {
+            $ubuntu = $wt.profiles.list | Where-Object { $_.name -match '^Ubuntu' } | Select-Object -First 1
+          }
+
+          if (-not $ubuntu) {
+            throw "Ubuntu profile not found in Windows Terminal yet. Open Terminal once after WSL Ubuntu install, then rerun."
+          }
+
+          $wt | Add-Member -Force -MemberType NoteProperty -Name defaultProfile -Value $ubuntu.guid
+
+          for ($i = 0; $i -lt $wt.profiles.list.Count; $i++) {
+            if ($wt.profiles.list[$i].guid -eq $ubuntu.guid) {
+              $wt.profiles.list[$i] | Add-Member -Force -MemberType NoteProperty -Name colorScheme -Value "Catppuccin Mocha"
+              break
+            }
+          }
+
+          ($wt | ConvertTo-Json -Depth 100) | Set-Content -Encoding UTF8 $settingsPath 

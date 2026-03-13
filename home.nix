@@ -291,6 +291,8 @@
     zip
     perl
 
+    duckdb
+
     wslu
 
     # # It is sometimes useful to fine-tune packages, for example, by applying

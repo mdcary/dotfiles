@@ -24,14 +24,24 @@
     :priority 1000
     :config (fn [] (vim.cmd.colorscheme :catppuccin-mocha))}
 
-   ;; SYNTAX: Treesitter
+   ;; SYNTAX: Treesitter (Main Branch Rewrite)
    {1 :nvim-treesitter/nvim-treesitter
-    :branch "master" ;; <-- THE FIX: Pin to the stable legacy branch
+    :branch "main"
     :build ":TSUpdate"
     :config (fn []
-              (let [ts (require :nvim-treesitter.configs)]
-                (ts.setup {:ensure_installed [:lua :fennel :python :javascript :markdown :c]
-                           :highlight {:enable true}})))}
+              (let [ts (require :nvim-treesitter)
+                    langs [:lua :fennel :python :javascript :markdown :c]]
+                
+                ;; 1. Download parsers (Replaces `ensure_installed`)
+                ;; Note: This safely acts as a no-op if they are already installed.
+                (ts.install langs)
+                
+                ;; 2. Enable Native Highlighting (Replaces `highlight = { enable = true }`)
+                (vim.api.nvim_create_autocmd
+                 :FileType
+                 {:pattern langs
+                  :callback (fn [args]
+                              (vim.treesitter.start args.buf))})))}
 
    ;; LSP: Mason & Nvim-Lspconfig
    {1 :neovim/nvim-lspconfig

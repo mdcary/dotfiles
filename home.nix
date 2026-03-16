@@ -243,6 +243,13 @@
   programs.neovim = {
     enable = true;
     defaultEditor = true;
+    extraPackages = with pkgs; [
+      cargo
+      gcc
+      gnumake
+      tree-sitter
+      dotnet-sdk
+    ];
   };
 
   programs.ssh = {
@@ -294,14 +301,6 @@
     duckdb
 
     wslu
-
-    cargo
-    gcc
-    gnumake
-
-    tree-sitter
-
-    dotnet-sdk
 
     # # It is sometimes useful to fine-tune packages, for example, by applying
     # # overrides. You can do that directly here, just don't forget the

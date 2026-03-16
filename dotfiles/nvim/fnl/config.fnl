@@ -49,15 +49,35 @@
                    :williamboman/mason-lspconfig.nvim]
     :config (fn []
               (let [mason (require :mason)
-                    mason-lsp (require :mason-lspconfig)]
+                    mason-lsp (require :mason-lspconfig)
+                    ;; 1. Add :omnisharp to your server list
+                    servers [:lua_ls :fennel_language_server :omnisharp]]
                 
-                ;; 1. Setup Mason and tools
                 (mason.setup)
-                (mason-lsp.setup {:ensure_installed [:lua_ls :fennel_language_server]})
-                
-                ;; 2. The NEW Neovim 0.11 Native API
-                ;; No more require("lspconfig"). Just pass a list of servers to enable!
-                (vim.lsp.enable [:lua_ls :fennel_language_server])))}
+                (mason-lsp.setup {:ensure_installed servers})
+                (vim.lsp.enable servers)
+
+                ;; 2. Native LSP Keybindings (Triggers when an LSP attaches)
+                (vim.api.nvim_create_autocmd
+                 :LspAttach
+                 {:callback (fn [args]
+                              ;; A tiny helper function for clean mappings
+                              (let [map (fn [keys func desc]
+                                          (vim.keymap.set :n keys func {:buffer args.buf :desc desc}))]
+                                
+                                ;; Standard Neovim Native Actions
+                                (map "gd" vim.lsp.buf.definition "Go to Definition")
+                                (map "gD" vim.lsp.buf.declaration "Go to Declaration")
+                                (map "K" vim.lsp.buf.hover "Hover Documentation")
+                                (map "<leader>ca" vim.lsp.buf.code_action "Code Action")
+                                (map "<leader>rn" vim.lsp.buf.rename "Rename")
+
+                                ;; Fzf-Lua integrations for better UI on lists
+                                (map "gr" "<cmd>FzfLua lsp_references<CR>" "LSP References")
+                                (map "gi" "<cmd>FzfLua lsp_implementations<CR>" "LSP Implementations")
+                                (map "<leader>ds" "<cmd>FzfLua lsp_document_symbols<CR>" "Document Symbols")
+                                (map "<leader>wd" "<cmd>FzfLua lsp_workspace_diagnostics<CR>" "Workspace Diagnostics")))})))}
+   
 
    ;; COMPLETION: blink.cmp
    {1 :saghen/blink.cmp

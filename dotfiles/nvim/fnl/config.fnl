@@ -74,4 +74,5 @@
 ;; Run lazy.setup
 (let [lazy (require :lazy)]
   (lazy.setup plugins 
-              {:lockfile (.. (vim.fn.stdpath :state) "/lazy-lock.json")}))
+              {:lockfile (.. (vim.fn.stdpath :state) "/lazy-lock.json")
+               :performance {:rtp {:reset false}}}))

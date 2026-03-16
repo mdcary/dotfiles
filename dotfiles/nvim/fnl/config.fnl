@@ -26,6 +26,7 @@
 
    ;; SYNTAX: Treesitter
    {1 :nvim-treesitter/nvim-treesitter
+    :branch "master" ;; <-- THE FIX: Pin to the stable legacy branch
     :build ":TSUpdate"
     :config (fn []
               (let [ts (require :nvim-treesitter.configs)]
@@ -38,12 +39,15 @@
                    :williamboman/mason-lspconfig.nvim]
     :config (fn []
               (let [mason (require :mason)
-                    mason-lsp (require :mason-lspconfig)
-                    lsp (require :lspconfig)]
+                    mason-lsp (require :mason-lspconfig)]
+                
+                ;; 1. Setup Mason and tools
                 (mason.setup)
                 (mason-lsp.setup {:ensure_installed [:lua_ls :fennel_language_server]})
-                (lsp.lua_ls.setup {})
-                (lsp.fennel_language_server.setup {})))}
+                
+                ;; 2. The NEW Neovim 0.11 Native API
+                ;; No more require("lspconfig"). Just pass a list of servers to enable!
+                (vim.lsp.enable [:lua_ls :fennel_language_server])))}
 
    ;; COMPLETION: blink.cmp
    {1 :saghen/blink.cmp

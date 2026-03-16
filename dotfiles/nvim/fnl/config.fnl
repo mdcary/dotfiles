@@ -55,6 +55,12 @@
                 
                 (mason.setup)
                 (mason-lsp.setup {:ensure_installed servers})
+
+		(vim.lsp.config :fennel_language_server 
+                                {:settings {:fennel {:diagnostics {:globals [:vim]}}}})
+                (vim.lsp.config :lua_ls 
+                                {:settings {:Lua {:diagnostics {:globals [:vim]}}}})
+
                 (vim.lsp.enable servers)
 
                 ;; 2. Native LSP Keybindings (Triggers when an LSP attaches)

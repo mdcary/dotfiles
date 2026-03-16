@@ -1,0 +1,24 @@
+# Podman-specific overrides
+# - Resolve ~/.aws/config symlink (Nix home-manager) with explicit file mounts
+# - Switch logging to journald (podman's json-file driver doesn't support --log-tag)
+
+services:
+  backend:
+    volumes:
+      - /nix/store/l8k2yw4yxnwibgb4fxxh3zjnaf3m78zn-home-manager-files/.aws/config:/root/.aws/config:ro
+      - ~/.aws/sso:/root/.aws/sso:ro
+      - ~/.aws/cli:/root/.aws/cli:ro
+    logging:
+      driver: "journald"
+
+  postgres:
+    logging:
+      driver: "journald"
+
+  frontend:
+    logging:
+      driver: "journald"
+
+  otel-collector:
+    logging:
+      driver: "journald"

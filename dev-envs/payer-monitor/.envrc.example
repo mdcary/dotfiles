@@ -1,0 +1,21 @@
+use flake
+
+repo="payer-monitor"
+shared_env="$HOME/.config/mdc-env/${repo}.env"
+local_env="$PWD/.env"
+
+mkdir -p "$(dirname "$shared_env")"
+
+# Ensure shared file exists
+if [ ! -f "$shared_env" ]; then
+  touch "$shared_env"
+  chmod 600 "$shared_env"
+fi
+
+# Copy-on-create into the worktree
+if [ ! -f "$local_env" ]; then
+  cp "$shared_env" "$local_env"
+  chmod 600 "$local_env"
+fi
+
+dotenv_if_exists "$local_env"

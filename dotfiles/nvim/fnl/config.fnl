@@ -6,12 +6,36 @@
 (set vim.g.mapleader " ")
 (set vim.g.maplocalleader " ")
 
-(set vim.opt.number true)
-(set vim.opt.relativenumber true)
-(set vim.opt.clipboard "unnamedplus")
-(set vim.opt.ignorecase true)
-(set vim.opt.smartcase true)
-(set vim.opt.termguicolors true)
+;; ==============================================================================
+;; 1. BASE OPTIONS & KEYMAPS
+;; ==============================================================================
+(set vim.g.mapleader " ")
+(set vim.g.maplocalleader " ")
+
+;; --- UI & Display ---
+(set vim.opt.number true)           ;; Show line numbers
+(set vim.opt.relativenumber true)   ;; Relative line numbers for easy jumping (e.g., 5j)
+(set vim.opt.termguicolors true)    ;; Enable 24-bit RGB colors
+(set vim.opt.cursorline true)       ;; Highlight the current line
+(set vim.opt.signcolumn "yes")      ;; Always show the gutter (prevents text shifting when errors appear)
+(set vim.opt.scrolloff 8)           ;; Keep 8 lines above/below the cursor when scrolling
+
+;; --- Tabs & Indentation ---
+(set vim.opt.expandtab true)        ;; Convert Tabs to spaces
+(set vim.opt.shiftwidth 2)          ;; Indent size
+(set vim.opt.tabstop 2)             ;; Tab size
+(set vim.opt.smartindent true)      ;; Auto-indent new lines intelligently
+
+;; --- Search ---
+(set vim.opt.ignorecase true)       ;; Case-insensitive search
+(set vim.opt.smartcase true)        ;; ...unless you type a capital letter
+(set vim.opt.inccommand "split")    ;; Show live preview of search/replace across the file
+
+;; --- Quality of Life ---
+(set vim.opt.clipboard "unnamedplus") ;; Sync with system clipboard
+(set vim.opt.updatetime 250)          ;; Faster completion and hover delays (default is 4000ms)
+(set vim.opt.splitright true)         ;; Vertical splits open to the right
+(set vim.opt.splitbelow true)         ;; Horizontal splits open below
 
 ;; ==============================================================================
 ;; 2. PLUGIN SPECIFICATION (Using lazy.nvim)

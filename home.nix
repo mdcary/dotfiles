@@ -1,5 +1,9 @@
 { config, pkgs, ... }:
 
+let
+  # Import our custom package
+  linear-cli = pkgs.callPackage ./pkgs/linear-cli.nix { };
+in
 {
   # Home Manager needs a bit of information about you and the paths it should
   # manage.
@@ -40,6 +44,24 @@
         st = "status";
         lg = "log --graph --oneline --decorate --all";
       };
+    };
+  };
+
+  programs.gh = {
+    enable = true;
+    settings = {
+      git_protocol = "ssh";
+
+      # Create command aliases for frequently used operations
+      aliases = {
+        co = "pr checkout";        # Alias: `gh co` → `gh pr checkout`
+        pv = "pr view";            # Alias: `gh pv` → `gh pr view`
+        ic = "issue create";       # Alias: `gh ic` → `gh issue create`
+        iv = "issue view";         # Alias: `gh iv` → `gh issue view`
+      };
+
+      # Set your preferred editor for creating issues/PRs
+      editor = "nvim";
     };
   };
 
@@ -294,7 +316,8 @@
     bat
     fd
     jq
-    gh
+
+    linear-cli
 
     podman
     podman-compose

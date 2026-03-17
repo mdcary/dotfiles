@@ -258,7 +258,7 @@ in
 
       # --- Floating Linear Dashboard (Bonus) ---
       # If you want a dedicated popup just for your Linear issues:
-      bind i display-popup -d "#{pane_current_path}" -w 70% -h 70% -E "linear issue list && read"
+      bind i display-popup -d "#{pane_current_path}" -w 90% -h 90% -E "linear issue list --team MDC --sort manual --cycle active -A && read"
 
       # Keybindings to make copying feel like Neovim
       bind-key -T copy-mode-vi 'v' send -X begin-selection     # 'v' to begin selection

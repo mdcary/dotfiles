@@ -15,7 +15,8 @@ pkgs.stdenv.mkDerivation rec {
 
   installPhase = ''
     mkdir -p $out/bin
-    cp linear $out/bin/
+    # Look inside the unpacked folder for the binary
+    cp ./linear-x86_64-unknown-linux-gnu/linear $out/bin/
     chmod +x $out/bin/linear
   '';
 

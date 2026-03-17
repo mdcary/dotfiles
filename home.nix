@@ -245,6 +245,10 @@ in
       # Quick session switching (replaces manual prefix+s)
       bind S display-popup -E "sesh connect \$(sesh list | fzf)" #
 
+      # --- Reload Configuration ---
+      # Press Prefix + r to reload the tmux config and display a message
+      bind r source-file ~/.config/tmux/tmux.conf \; display "Config reloaded!"
+
       # --- Smart Splits (Navigation & Resizing) ---
       # '@pane-is-vim' is a pane-local option set natively by smart-splits.nvim
       

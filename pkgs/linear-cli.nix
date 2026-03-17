@@ -8,7 +8,7 @@ pkgs.stdenv.mkDerivation rec {
     owner = "schpet";
     repo = "linear-cli";
     rev = "v1.11.1"; # Or a specific tag like "v0.1.0"
-    hash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="; # See note below
+    hash = "sha256-os/p8P1ZFqdMFuqci0XtbDpJQP31PDfCtYSX9xFv8D4=";
   };
 
   nativeBuildInputs = [ pkgs.deno ];

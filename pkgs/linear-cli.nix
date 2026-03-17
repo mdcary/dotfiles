@@ -2,18 +2,17 @@
 
 pkgs.stdenv.mkDerivation rec {
   pname = "linear-cli";
-  version = "1.11.1"; # Current version as of early 2026
+  version = "1.11.1";
 
   src = pkgs.fetchurl {
-    # Note: Using the x86_64-linux binary. 
-    # If you are on ARM (Apple Silicon via WSL/VM), use 'aarch64-unknown-linux-gnu'
+    # Changed extension to .tar.xz
     url = "https://github.com/schpet/linear-cli/releases/download/v${version}/linear-x86_64-unknown-linux-gnu.tar.xz";
-    sha256 = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="; 
+    # This is the hash from your earlier log where it successfully unpacked the .xz
+    sha256 = "sha256-lqnnk7i5lig1m7k6fnxl6acm5mcjqhbj="; 
   };
 
-  # This source is a tarball, so Nix will unpack it automatically.
-  # We just need to move the binary to the right place.
-  setSourceRoot = "sourceRoot = \".\";";
+  # Direct Nix to look in the current directory after unpacking
+  sourceRoot = ".";
 
   installPhase = ''
     mkdir -p $out/bin
@@ -22,8 +21,9 @@ pkgs.stdenv.mkDerivation rec {
   '';
 
   meta = with pkgs.lib; {
-    description = "A CLI to list, start and create issues in Linear";
+    description = "Linear CLI - list, start, and create issues";
     homepage = "https://github.com/schpet/linear-cli";
-    license = licenses.mit;
+    license = licenses.isc;
+    platforms = [ "x86_64-linux" ];
   };
 }

@@ -130,9 +130,28 @@
    ;; FORMATTING: conform.nvim
    {1 :stevearc/conform.nvim
     :opts {:formatters_by_ft {:lua [:stylua]
-                              :fennel [:fnlfmt]}
+                              :fennel [:fnlfmt]
+                              :cs [:csharpier]
+                              
+                              ;; Python: Sort imports/fix, then format
+                              :python [:ruff_fix :ruff_format]
+                              
+                              ;; Web & Docs: The Daemonized Prettier
+                              :javascript [:prettierd]
+                              :typescript [:prettierd]
+                              :css [:prettierd]
+                              :markdown [:prettierd]
+                              
+                              ;; Shell Scripts
+                              :sh [:shfmt]
+                              :bash [:shfmt]
+                              
+                              ;; PowerShell (Runs `pwsh -c Invoke-Formatter`)
+                              :ps1 [:powershell]}
+                              
            :format_on_save {:timeout_ms 500
                             :lsp_format :fallback}}}
+   
   ])
 
 ;; Run lazy.setup

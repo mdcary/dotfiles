@@ -249,6 +249,14 @@
       gnumake
       tree-sitter
       dotnet-sdk
+
+      # Formatters
+      stylua
+      fnlfmt
+      csharpier
+      ruff
+      prettierd
+      shfmt
     ];
   };
 

@@ -14,6 +14,15 @@ in
   programs."claude-code".enable = true;
   programs.bun.enable = true;
   programs.uv.enable = true;
+  programs.jujutsu = {
+    enable = true;
+    settings = {
+      user = {
+        name = "Cary Lee";
+        email = "clee@mdclarity.com";
+      };
+    };
+  };
   programs.git = {
     enable = true;
   

@@ -249,6 +249,17 @@ in
       # Press Prefix + r to reload the tmux config and display a message
       bind r source-file ~/.config/tmux/tmux.conf \; display "Config reloaded!"
 
+      # --- Vi-Mode Copying (The "Vim-ify" block) ---
+      set-window-option -g mode-keys vi # Use Vim keys in copy mode
+
+      # Keybindings to make copying feel like Neovim
+      bind-key -T copy-mode-vi 'v' send -X begin-selection     # 'v' to begin selection
+      bind-key -T copy-mode-vi 'y' send -X copy-selection-and-cancel # 'y' to yank
+      bind-key -T copy-mode-vi 'C-v' send -X rectangle-toggle  # 'Ctrl-v' for block visual mode
+
+      # Don't exit copy mode when dragging with the mouse
+      unbind -T copy-mode-vi MouseDragEnd1Pane
+
       # --- Smart Splits (Navigation & Resizing) ---
       # '@pane-is-vim' is a pane-local option set natively by smart-splits.nvim
       

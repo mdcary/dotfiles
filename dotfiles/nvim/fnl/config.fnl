@@ -179,6 +179,42 @@
                 :view_options {:show_hidden true}}
          ;; Lazy.nvim native keybinding
          :keys [{1 "-" 2 :<cmd>Oil<CR> :desc "Open Parent Directory"}]}
+        ;; THE SWISS ARMY KNIFE: snacks.nvim
+        {1 :folke/snacks.nvim
+         :priority 1000
+         :lazy false
+         :opts {:notifier {:enabled true :timeout 3000}
+                ;; Beautiful popup notifications
+                :dashboard {:enabled true}
+                ;; Startup screen with recent files
+                :bigfile {:enabled true}
+                ;; Auto-disables LSP/Treesitter on massive files so Nvim doesn't freeze
+                :quickfile {:enabled true}
+                ;; Renders files instantly before plugins even load
+                :words {:enabled true}
+                ;; Auto-highlights matching variables under your cursor
+                :zen {:enabled true}}
+         ;; Distraction-free coding mode
+         :keys [{1 :<leader>z
+                 2 (fn []
+                     ((. (require :snacks) :zen :zen)))
+                 :desc "Toggle Zen Mode"}
+                {1 :<leader>gB
+                 2 (fn []
+                     ((. (require :snacks) :gitbrowse :open)))
+                 :desc "Open line in Github/Browser"}
+                {1 :<leader>nd
+                 2 (fn []
+                     ((. (require :snacks) :notifier :hide)))
+                 :desc "Dismiss All Notifications"}
+                {1 "]]"
+                 2 (fn []
+                     ((. (require :snacks) :words :jump) 1 true))
+                 :desc "Next Variable Reference"}
+                {1 "[["
+                 2 (fn []
+                     ((. (require :snacks) :words :jump) -1 true))
+                 :desc "Prev Variable Reference"}]}
         ;; TMUX INTEGRATION: Smart-Splits (Navigation & Resizing)
         {1 :mrjones2014/smart-splits.nvim
          :lazy false

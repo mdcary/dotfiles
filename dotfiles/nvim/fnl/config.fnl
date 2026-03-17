@@ -179,6 +179,12 @@
                 :view_options {:show_hidden true}}
          ;; Lazy.nvim native keybinding
          :keys [{1 "-" 2 :<cmd>Oil<CR> :desc "Open Parent Directory"}]}
+        ;; KEYBIND DISCOVERY: which-key.nvim (With Group Labels!)
+        {1 :folke/which-key.nvim
+         :event :VeryLazy
+         :opts {:preset :modern
+                :spec [{1 :<leader>f :group "Find (Fzf)" :icon " "}
+                       {1 :<leader>c :group "Code Actions" :icon " "}]}}
         ;; FORMATTING: conform.nvim
         {1 :stevearc/conform.nvim
          :opts {:formatters_by_ft {:lua [:stylua]

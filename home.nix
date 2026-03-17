@@ -221,18 +221,30 @@ in
       yank
       resurrect
       continuum
+      catppuccin
     ];
     extraConfig = ''
-      set -g mouse on
-      set -g history-limit 100000
-      set -g @continuum-restore 'on'
-      set -g @continuum-save-interval '15'
-
       # --- Prefix Setup ---
       unbind C-b
       set -g prefix C-a
       bind C-a send-prefix
       
+      # --- Mouse Support ---
+      set -g mouse on
+
+      # --- Appearance ---
+      set -g status-position top # 2026 trend: status bar at the top
+      set -g @catppuccin_flavor 'mocha'
+
+      set -g history-limit 100000
+      set -g @continuum-restore 'on'
+      set -g @resurrect-strategy-nvim 'session' #
+      set -g @continuum-save-interval '15'
+
+      # --- Modern Session Management ---
+      # Quick session switching (replaces manual prefix+s)
+      bind S display-popup -E "sesh connect \$(sesh list | fzf)" #
+
       # --- Smart Splits (Navigation & Resizing) ---
       # '@pane-is-vim' is a pane-local option set natively by smart-splits.nvim
       
@@ -253,6 +265,10 @@ in
       bind-key -T copy-mode-vi 'C-j' select-pane -D
       bind-key -T copy-mode-vi 'C-k' select-pane -U
       bind-key -T copy-mode-vi 'C-l' select-pane -R
+
+      # Better split keys
+      bind | split-window -h -c "#{pane_current_path}"
+      bind - split-window -v -c "#{pane_current_path}"
 
       # Open new vertical split in the current directory
       bind % split-window -h -c "#{pane_current_path}"
@@ -325,6 +341,7 @@ in
     bat
     fd
     jq
+    sesh
 
     linear-cli
 

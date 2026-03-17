@@ -179,6 +179,43 @@
                 :view_options {:show_hidden true}}
          ;; Lazy.nvim native keybinding
          :keys [{1 "-" 2 :<cmd>Oil<CR> :desc "Open Parent Directory"}]}
+        ;; TMUX INTEGRATION: Smart-Splits (Navigation & Resizing)
+        {1 :mrjones2014/smart-splits.nvim
+         :lazy false
+         :keys [;; Navigation
+                {1 :<C-h>
+                 2 (fn []
+                     ((. (require :smart-splits) :move_cursor_left)))
+                 :desc "Window Left"}
+                {1 :<C-j>
+                 2 (fn []
+                     ((. (require :smart-splits) :move_cursor_down)))
+                 :desc "Window Down"}
+                {1 :<C-k>
+                 2 (fn []
+                     ((. (require :smart-splits) :move_cursor_up)))
+                 :desc "Window Up"}
+                {1 :<C-l>
+                 2 (fn []
+                     ((. (require :smart-splits) :move_cursor_right)))
+                 :desc "Window Right"}
+                ;; Resizing
+                {1 :<A-h>
+                 2 (fn []
+                     ((. (require :smart-splits) :resize_left)))
+                 :desc "Resize Left"}
+                {1 :<A-j>
+                 2 (fn []
+                     ((. (require :smart-splits) :resize_down)))
+                 :desc "Resize Down"}
+                {1 :<A-k>
+                 2 (fn []
+                     ((. (require :smart-splits) :resize_up)))
+                 :desc "Resize Up"}
+                {1 :<A-l>
+                 2 (fn []
+                     ((. (require :smart-splits) :resize_right)))
+                 :desc "Resize Right"}]}
         ;; KEYBIND DISCOVERY: which-key.nvim (With Group Labels!)
         {1 :folke/which-key.nvim
          :event :VeryLazy

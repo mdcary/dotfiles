@@ -366,6 +366,8 @@ in
     jq
     sesh
 
+    ffmpeg
+
     linear-cli
 
     podman

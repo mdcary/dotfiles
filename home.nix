@@ -252,6 +252,14 @@ in
       # --- Vi-Mode Copying (The "Vim-ify" block) ---
       set-window-option -g mode-keys vi # Use Vim keys in copy mode
 
+      # --- Floating Scratchpad ---
+      # Prefix + g toggles a centered floating terminal popup
+      bind g display-popup -d "#{pane_current_path}" -w 80% -h 80% -E "zsh"
+
+      # --- Floating Linear Dashboard (Bonus) ---
+      # If you want a dedicated popup just for your Linear issues:
+      bind i display-popup -d "#{pane_current_path}" -w 70% -h 70% -E "linear issue list && read"
+
       # Keybindings to make copying feel like Neovim
       bind-key -T copy-mode-vi 'v' send -X begin-selection     # 'v' to begin selection
       bind-key -T copy-mode-vi 'y' send -X copy-selection-and-cancel # 'y' to yank

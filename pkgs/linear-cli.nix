@@ -5,25 +5,30 @@ pkgs.stdenv.mkDerivation rec {
   version = "1.11.1";
 
   src = pkgs.fetchurl {
-    # Changed extension to .tar.xz
     url = "https://github.com/schpet/linear-cli/releases/download/v${version}/linear-x86_64-unknown-linux-gnu.tar.xz";
-    sha256 = "sha256-S7zwxOYXwYmK+zcyuhuvVW8JhXPI5hgaWiyEz7T0gII";
+    # This is the EXACT checksum from the official installer script!
+    sha256 = "4bbcf0c4e617c1898afb3732ba1baf556f098573c8e6181a5a2c84cfb4f48082";
   };
 
-  # Direct Nix to look in the current directory after unpacking
+  # The installer script confirms it uses --strip-components 1
+  # This means Nix should look for the binary in the root of the unpacked source.
   sourceRoot = ".";
+
+  # We need to add the unpacker for .tar.xz
+  nativeBuildInputs = [ pkgs.xz ];
 
   installPhase = ''
     mkdir -p $out/bin
-    # Look inside the unpacked folder for the binary
-    cp ./linear-x86_64-unknown-linux-gnu/linear $out/bin/
+    # The installer shows the binary is just named 'linear'
+    # We find it and move it to our bin directory
+    find . -type f -name "linear" -exec cp {} $out/bin/ \;
     chmod +x $out/bin/linear
   '';
 
   meta = with pkgs.lib; {
     description = "Linear CLI - list, start, and create issues";
     homepage = "https://github.com/schpet/linear-cli";
-    license = licenses.isc;
+    license = licenses.mit;
     platforms = [ "x86_64-linux" ];
   };
 }

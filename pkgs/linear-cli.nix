@@ -7,8 +7,7 @@ pkgs.stdenv.mkDerivation rec {
   src = pkgs.fetchurl {
     # Changed extension to .tar.xz
     url = "https://github.com/schpet/linear-cli/releases/download/v${version}/linear-x86_64-unknown-linux-gnu.tar.xz";
-    # This is the hash from your earlier log where it successfully unpacked the .xz
-    sha256 = "sha256-lqnnk7i5lig1m7k6fnxl6acm5mcjqhbj="; 
+    sha256 = "sha256-S7zwxOYXwYmK+zcyuhuvVW8JhXPI5hgaWiyEz7T0gII";
   };
 
   # Direct Nix to look in the current directory after unpacking

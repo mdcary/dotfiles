@@ -170,6 +170,15 @@
                                      {:desc "Find Files"})
                      (vim.keymap.set :n :<leader>fg "<cmd>FzfLua live_grep<CR>"
                                      {:desc "Live Grep"})))}
+        ;; FILE EXPLORER: oil.nvim
+        {1 :stevearc/oil.nvim
+         :dependencies [:nvim-tree/nvim-web-devicons]
+         :opts {:default_file_explorer true
+                :delete_to_trash true
+                :skip_confirm_for_simple_edits true
+                :view_options {:show_hidden true}}
+         ;; Lazy.nvim native keybinding
+         :keys [{1 "-" 2 :<cmd>Oil<CR> :desc "Open Parent Directory"}]}
         ;; FORMATTING: conform.nvim
         {1 :stevearc/conform.nvim
          :opts {:formatters_by_ft {:lua [:stylua]

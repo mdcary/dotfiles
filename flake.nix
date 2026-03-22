@@ -12,21 +12,33 @@
   outputs = { nixpkgs, home-manager, ... }:
     let
       system = "x86_64-linux";
-      
-      # CHANGE: Import nixpkgs with the config applied here
+
       pkgs = import nixpkgs {
         inherit system;
         config = {
           allowUnfreePredicate = pkg: builtins.elem (nixpkgs.lib.getName pkg) [
             "claude-code"
-            # Add other non-free packages here if needed
           ];
         };
       };
+
+      # Define DuckDB 1.5 here
+      duckdb-1-5 = pkgs.duckdb.overrideAttrs (oldAttrs: rec {
+        version = "1.5.0";
+        src = pkgs.fetchFromGitHub {
+          owner = "duckdb";
+          repo = "duckdb";
+          rev = "v${version}";
+          hash = "sha256-nTtLs3we5LVV1yBRWqJJDCBVxA+TPKwW+t/5oONUSS4="; 
+        };
+      });
     in
     {
       homeConfigurations."cary" = home-manager.lib.homeManagerConfiguration {
         inherit pkgs;
+
+        # Pass the custom duckdb package into home.nix via 'extraSpecialArgs'
+        extraSpecialArgs = { inherit duckdb-1-5; };
 
         modules = [ ./home.nix ];
       };

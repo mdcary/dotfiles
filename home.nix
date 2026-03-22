@@ -1,4 +1,4 @@
-{ config, pkgs, ... }:
+{ config, pkgs, duckdb-1-5, ... }:
 
 let
   # Import our custom package
@@ -379,7 +379,7 @@ in
     zip
     perl
 
-    duckdb
+    duckdb-1-5
 
     wslu
 

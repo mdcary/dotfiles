@@ -1,4 +1,4 @@
-{ config, pkgs, duckdb-1-5-bin, ... }:
+{ config, pkgs, duckdb-1-5-bin, claude-code, ... }:
 
 let
   # Import our custom package
@@ -11,7 +11,6 @@ in
   home.homeDirectory = "/home/cary";
   xdg.enable = true;
   xdg.configFile."nvim".source = ./dotfiles/nvim;
-  programs."claude-code".enable = true;
   programs.bun.enable = true;
   programs.uv.enable = true;
   programs.jujutsu = {
@@ -380,6 +379,8 @@ in
     perl
 
     duckdb-1-5-bin
+
+    claude-code.packages.${pkgs.system}.default
 
     wslu
 

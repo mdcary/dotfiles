@@ -3,13 +3,15 @@
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
+    # Add the automated Claude Code flake
+    claude-code.url = "github:sadjow/claude-code-nix";
     home-manager = {
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
 
-  outputs = { nixpkgs, home-manager, ... }:
+  outputs = { nixpkgs, home-manager, claude-code, ... }:
     let
       system = "x86_64-linux";
 
@@ -49,7 +51,9 @@
         inherit pkgs;
 
         # Pass the custom duckdb package into home.nix via 'extraSpecialArgs'
-        extraSpecialArgs = { inherit duckdb-1-5-bin; };
+        extraSpecialArgs = {
+          inherit duckdb-1-5-bin claude-code;
+        };
 
         modules = [ ./home.nix ];
       };

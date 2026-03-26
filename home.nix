@@ -9,6 +9,9 @@ in
   # manage.
   home.username = "cary";
   home.homeDirectory = "/home/cary";
+  home.sessionPath = [
+    "$HOME/.local/bin"
+  ];
   xdg.enable = true;
   xdg.configFile."nvim".source = ./dotfiles/nvim;
   programs.bun.enable = true;
@@ -203,6 +206,45 @@ in
       fi
 
       setopt NO_BEEP
+
+      mktree() {
+        local repo=$1
+        local branch_id=$2
+
+        # Check if both arguments were provided
+        if [[ -z "$repo" || -z "$branch_id" ]]; then
+          echo "Usage: mktree <repo> <branch-identifier>"
+          return 1
+        fi
+
+        local src_dir="$HOME/src/mdc/$repo"
+        local branch_name="cary/$branch_id"
+        local tree_dir="$HOME/trees/$repo/$branch_id"
+
+        # 1. Verify the source repository exists
+        if [[ ! -d "$src_dir" ]]; then
+          echo "Error: Base repository '$src_dir' does not exist."
+          return 1
+        fi
+
+        # 2. Navigate to the base repo
+        cd "$src_dir" || return 1
+
+        # 3. Ensure the parent trees directory exists
+        mkdir -p "$HOME/trees/$repo"
+
+        # 4. Attempt to create worktree from an existing branch. 
+        # If it fails (branch doesn't exist), create a new branch.
+        echo "Setting up worktree for '$branch_name'..."
+        if ! git worktree add "$tree_dir" "$branch_name" 2>/dev/null; then
+          echo "Branch not found locally/remotely. Creating new branch..."
+          git worktree add -b "$branch_name" "$tree_dir"
+        fi
+
+        # 5. Navigate directly into the new worktree
+        cd "$tree_dir" || return 1
+        echo "✅ Success! You are now in: $PWD"
+      }
     '';
   };
 

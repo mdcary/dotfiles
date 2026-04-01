@@ -3,7 +3,6 @@
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
-    # Add the automated Claude Code flake
     claude-code.url = "github:sadjow/claude-code-nix";
     home-manager = {
       url = "github:nix-community/home-manager";
@@ -13,49 +12,46 @@
 
   outputs = { nixpkgs, home-manager, claude-code, ... }:
     let
-      system = "x86_64-linux";
-
-      pkgs = import nixpkgs {
-        inherit system;
-        config = {
-          allowUnfreePredicate = pkg: builtins.elem (nixpkgs.lib.getName pkg) [
-            "claude-code"
-          ];
-        };
-      };
-
-      # Package the pre-compiled binary instead of compiling from source
-      duckdb-1-5-bin = pkgs.stdenv.mkDerivation rec {
-        pname = "duckdb-bin";
-        version = "1.5.0";
-
-        src = pkgs.fetchurl {
-          url = "https://github.com/duckdb/duckdb/releases/download/v${version}/duckdb_cli-linux-amd64.zip";
-          # You'll need to grab the real hash from the first failed run, just like before!
-          hash = "sha256-F5pIHt8EjdH+8PCX1mkztLX1pXN9QDTGReQV7HIsApI=";
+      # This helper detects if we are on Mac or Linux
+      supportedSystems = [ "x86_64-linux" "aarch64-darwin" ];
+      forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
+      
+      # We define a function to create the config for a specific system
+      mkHomeConfig = system: let
+        pkgs = import nixpkgs {
+          inherit system;
+          config.allowUnfree = true;
         };
 
-        nativeBuildInputs = [ pkgs.unzip ];
+        # Platform-specific DuckDB Logic
+        duckdb-bin = let
+          suffix = if pkgs.stdenv.isDarwin then "osx-arm64.zip" else "linux-amd64.zip";
+          hash = if pkgs.stdenv.isDarwin 
+                 then "sha256-K8mZpP7VvMvXvXvXvXvXvXvXvXvXvXvXvXvXvXvXvX=" # You will get a hash error; copy the real one from the error message
+                 else "sha256-F5pIHt8EjdH+8PCX1mkztLX1pXN9QDTGReQV7HIsApI=";
+        in pkgs.stdenv.mkDerivation rec {
+          pname = "duckdb-bin";
+          version = "1.5.0";
+          src = pkgs.fetchurl {
+            url = "https://github.com/duckdb/duckdb/releases/download/v${version}/duckdb_cli-${suffix}";
+            inherit hash;
+          };
+          nativeBuildInputs = [ pkgs.unzip ];
+          sourceRoot = ".";
+          installPhase = "mkdir -p $out/bin && cp duckdb $out/bin/ && chmod +x $out/bin/duckdb";
+        };
 
-        sourceRoot = ".";
-
-        installPhase = ''
-          mkdir -p $out/bin
-          cp duckdb $out/bin/
-          chmod +x $out/bin/duckdb
-        '';
+      in home-manager.lib.homeManagerConfiguration {
+        inherit pkgs;
+        extraSpecialArgs = { inherit duckdb-bin claude-code; };
+        modules = [ ./home.nix ];
       };
     in
     {
-      homeConfigurations."cary" = home-manager.lib.homeManagerConfiguration {
-        inherit pkgs;
-
-        # Pass the custom duckdb package into home.nix via 'extraSpecialArgs'
-        extraSpecialArgs = {
-          inherit duckdb-1-5-bin claude-code;
-        };
-
-        modules = [ ./home.nix ];
+      # This allows 'nix run home-manager' to work on both machines
+      homeConfigurations = {
+        "cary" = mkHomeConfig "aarch64-darwin"; # For the Mac
+        "cary-linux" = mkHomeConfig "x86_64-linux"; # For WSL
       };
     };
 }

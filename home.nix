@@ -8,7 +8,7 @@ in
   # Home Manager needs a bit of information about you and the paths it should
   # manage.
   home.username = "cary";
-  home.homeDirectory = "/home/cary";
+  home.homeDirectory = if pkgs.stdenv.isDarwin then "/Users/cary" else "/home/cary";
   home.sessionPath = [
     "$HOME/.local/bin",
     "$HOME/.cache/.bun/bin",
@@ -434,7 +434,6 @@ in
 
     claude-code.packages.${pkgs.system}.default
 
-    wslu
 
     # # It is sometimes useful to fine-tune packages, for example, by applying
     # # overrides. You can do that directly here, just don't forget the
@@ -448,7 +447,8 @@ in
     # (pkgs.writeShellScriptBin "my-hello" ''
     #   echo "Hello, ${config.home.username}!"
     # '')
-  ];
+  # CONDITIONAL PACKAGE: Only install wslu if we are on Linux
+    ] ++ (if pkgs.stdenv.isLinux then [ wslu ] else []);
 
   # Home Manager is pretty good at managing dotfiles. The primary way to manage
   # plain files is through 'home.file'.

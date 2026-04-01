@@ -103,6 +103,15 @@
                 "appcleaner"
                 "font-daddy-time-mono-nerd-font"
                 "font-inconsolata-nerd-font"
+                "vuescan"
+                "google-chrome"
+                "vlc"
+                "google-drive"
+                "steam"
+                "macwhisper"
+                "spotify"
+
+
               ];
             };
           })

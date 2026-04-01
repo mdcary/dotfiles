@@ -1,4 +1,4 @@
-{ config, pkgs, duckdb-bin, claude-code, ... }:
+{ config, pkgs, duckdb-bin, claude-code, isWork, ... }:
 
 let
   # Import our custom package
@@ -23,18 +23,28 @@ in
     settings = {
       user = {
         name = "Cary Lee";
-        email = "clee@mdclarity.com";
+        email = if isWork then "clee@mdclarity.com" else "carylee@gmail.com";
       };
     };
   };
   programs.git = {
     enable = true;
+
+    includes = [
+      {
+        condition = "gitdir:~/src/mdc/";
+        contents = {
+          user.email = "clee@mdclarity.com";
+        };
+      }
+    ];
   
     settings = {
       user = {
         name = "Cary Lee";
-        email = "clee@mdclarity.com";
+        email = if isWork then "clee@mdclarity.com" else "carylee@gmail.com";
       };
+
   
       init.defaultBranch = "main";
       pull.rebase = true;
@@ -106,7 +116,7 @@ in
   };
 
   programs.mr = {
-    enable = true;
+    enable = isWork;
 
     settings = {
       "src/mdc/Infrastructure" = {
@@ -448,7 +458,8 @@ in
     #   echo "Hello, ${config.home.username}!"
     # '')
   # CONDITIONAL PACKAGE: Only install wslu if we are on Linux
-    ] ++ (if pkgs.stdenv.isLinux then [ wslu ] else []);
+    ] ++ (if pkgs.stdenv.isLinux then [ wslu ] else [])
+    ++ (if isWork then [] else [yt-dlp]);
 
   # Home Manager is pretty good at managing dotfiles. The primary way to manage
   # plain files is through 'home.file'.

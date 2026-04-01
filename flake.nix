@@ -17,7 +17,7 @@
       forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
       
       # We define a function to create the config for a specific system
-      mkHomeConfig = system: let
+      mkHomeConfig = { system, isWork }: let
         pkgs = import nixpkgs {
           inherit system;
           config.allowUnfree = true;
@@ -43,15 +43,24 @@
 
       in home-manager.lib.homeManagerConfiguration {
         inherit pkgs;
-        extraSpecialArgs = { inherit duckdb-bin claude-code; };
+        extraSpecialArgs = { inherit duckdb-bin claude-code isWork; };
         modules = [ ./home.nix ];
       };
     in
     {
       # This allows 'nix run home-manager' to work on both machines
       homeConfigurations = {
-        "cary" = mkHomeConfig "aarch64-darwin"; # For the Mac
-        "cary-linux" = mkHomeConfig "x86_64-linux"; # For WSL
+        # Personal Mac
+        "cary" = mkHomeConfig { 
+          system = "aarch64-darwin"; 
+          isWork = false; 
+        };
+        
+        # Work WSL
+        "cary-linux" = mkHomeConfig { 
+          system = "x86_64-linux"; 
+          isWork = true; 
+        };
       };
     };
 }

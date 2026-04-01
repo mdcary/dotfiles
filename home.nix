@@ -393,15 +393,71 @@ in
   programs.ssh = {
     enable = true;
     enableDefaultConfig = false;
+    extraConfig = ''
+      ${if pkgs.stdenv.isDarwin then ''
+        IdentityAgent "~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
+        Include ~/.orbstack/ssh/config
+        Include ~/.colima/ssh_config
+      '' else ""}
+    '';
     matchBlocks = {
+      # Grouping common Lightsail hosts for cleaner code
+      "alumnae nextcloud alumnae_docker alumnae_old" = {
+        user = "ubuntu"; # Overridden individually below where needed
+        identitiesOnly = true;
+      };
+
+      "alumnae" = {
+        hostName = "18.118.144.106";
+        user = "bitnami";
+      };
+
+      "axd" = {
+        hostName = "ssh.nyc1.nearlyfreespeech.net";
+        user = "caryme_alphaxidelta";
+        identitiesOnly = true;
+      };
+
+      "nextcloud" = { hostName = "18.220.94.108"; };
+
+      "alumnae_docker" = { hostName = "3.129.26.193"; };
+
+      "alumnae_hetzner" = {
+        hostName = "alumnae-docker";
+        user = "cary";
+        identitiesOnly = true;
+      };
+
+      "purple_folder" = {
+        hostName = "178.156.160.41";
+        user = "ubuntu";
+        identitiesOnly = true;
+      };
+
+      "flourish" = {
+        hostName = "ssh.nyc1.nearlyfreespeech.net";
+        user = "caryme_flourishinplace";
+      };
+
+      "fip" = {
+        hostName = "5.161.230.35";
+        user = "cary";
+        identitiesOnly = true;
+      };
+
+      "gringotts" = {
+        hostName = "192.168.8.3";
+        user = "cary";
+      };
+      
+      # Keep your baseline settings
       "*" = {
-    # sensible baseline; adjust as desired
         forwardAgent = false;
         serverAliveInterval = 60;
         serverAliveCountMax = 3;
+        addKeysToAgent = "yes";
         compression = true;
         hashKnownHosts = true;
-        addKeysToAgent = "yes";
       };
     };
   };
@@ -444,6 +500,24 @@ in
 
     claude-code.packages.${pkgs.system}.default
 
+    ## Previously intalled via homebrew
+
+    # Document & Media utilities
+    pandoc
+    exiftool
+    poppler_utils
+    qpdf
+    weasyprint
+    imagemagick
+
+    # Network & sync
+    rclone
+    mosh
+
+    # System utilities
+    pwgen
+    watch
+    diskus
 
     # # It is sometimes useful to fine-tune packages, for example, by applying
     # # overrides. You can do that directly here, just don't forget the

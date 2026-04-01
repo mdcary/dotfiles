@@ -483,6 +483,9 @@ in
     jq
     sesh
 
+    #devtools
+    nodejs
+
     ffmpeg
 
     linear-cli

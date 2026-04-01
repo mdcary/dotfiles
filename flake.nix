@@ -66,6 +66,13 @@
             programs.zsh.enable = true; # Required for nix-darwin to hook into your shell properly
             system.stateVersion = 5;
 
+            # ---> THIS IS THE BLOCK TO ADD <---
+            users.users.cary = {
+              name = "cary";
+              home = "/Users/cary";
+            };
+            # ----------------------------------
+
             # Here is your Mac-only Homebrew configuration
             homebrew = {
               enable = true;

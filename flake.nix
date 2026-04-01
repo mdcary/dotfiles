@@ -71,6 +71,8 @@
               name = "cary";
               home = "/Users/cary";
             };
+
+            system.primaryUser = "cary";
             # ----------------------------------
 
             # Here is your Mac-only Homebrew configuration

@@ -62,7 +62,10 @@
         modules = [
           # System-level Mac configurations go here
           ({ pkgs, ... }: {
-            nix.settings.experimental-features = "nix-command flakes";
+            # Tell nix-darwin to let Determinate Systems manage the Nix daemon
+            nix.enable = false;
+
+            # nix.settings.experimental-features = "nix-command flakes";
             programs.zsh.enable = true; # Required for nix-darwin to hook into your shell properly
             system.stateVersion = 5;
 

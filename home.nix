@@ -408,45 +408,45 @@ in
       };
 
       "alumnae" = {
-        hostName = "18.118.144.106";
+        hostname = "18.118.144.106";
         user = "bitnami";
       };
 
       "axd" = {
-        hostName = "ssh.nyc1.nearlyfreespeech.net";
+        hostname = "ssh.nyc1.nearlyfreespeech.net";
         user = "caryme_alphaxidelta";
         identitiesOnly = true;
       };
 
-      "nextcloud" = { hostName = "18.220.94.108"; };
+      "nextcloud" = { hostname = "18.220.94.108"; };
 
-      "alumnae_docker" = { hostName = "3.129.26.193"; };
+      "alumnae_docker" = { hostname = "3.129.26.193"; };
 
       "alumnae_hetzner" = {
-        hostName = "alumnae-docker";
+        hostname = "alumnae-docker";
         user = "cary";
         identitiesOnly = true;
       };
 
       "purple_folder" = {
-        hostName = "178.156.160.41";
+        hostname = "178.156.160.41";
         user = "ubuntu";
         identitiesOnly = true;
       };
 
       "flourish" = {
-        hostName = "ssh.nyc1.nearlyfreespeech.net";
+        hostname = "ssh.nyc1.nearlyfreespeech.net";
         user = "caryme_flourishinplace";
       };
 
       "fip" = {
-        hostName = "5.161.230.35";
+        hostname = "5.161.230.35";
         user = "cary";
         identitiesOnly = true;
       };
 
       "gringotts" = {
-        hostName = "192.168.8.3";
+        hostname = "192.168.8.3";
         user = "cary";
       };
       
@@ -505,9 +505,8 @@ in
     # Document & Media utilities
     pandoc
     exiftool
-    poppler_utils
+    poppler-utils
     qpdf
-    weasyprint
     imagemagick
 
     # Network & sync

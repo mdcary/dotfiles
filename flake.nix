@@ -83,15 +83,11 @@
               enable = true;
               onActivation.autoUpdate = true;
               onActivation.cleanup = "zap";
-              taps = [
-                "homebrew/cask"
-                "homebrew/cask-fonts"
-              ];
               casks = [
                 "1password"
                 "discord"
                 "obsidian"
-                "tailscale"
+                "tailscale-app"
                 "microsoft-teams"
                 "zoom"
                 "calibre"

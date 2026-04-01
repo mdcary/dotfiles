@@ -86,12 +86,24 @@
               ];
               casks = [
                 "1password"
-                "arc"
                 "discord"
                 "obsidian"
                 "tailscale"
-                "ghostty"
-                # Add the rest of your casks here...
+                "microsoft-teams"
+                "zoom"
+                "calibre"
+                "1password"
+                "1password-cli"
+                "orbstack"
+                "iterm2"
+                "visual-studio-code"
+                "audacity"
+                "prusaslicer"
+                "openscad"
+                "raspberry-pi-imager"
+                "appcleaner"
+                "font-daddy-time-mono-nerd-font"
+                "font-inconsolata-nerd-font"
               ];
             };
           })

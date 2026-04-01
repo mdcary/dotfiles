@@ -1,4 +1,4 @@
-{ config, pkgs, duckdb-1-5-bin, claude-code, ... }:
+{ config, pkgs, duckdb-bin, claude-code, ... }:
 
 let
   # Import our custom package
@@ -430,7 +430,7 @@ in
     zip
     perl
 
-    duckdb-1-5-bin
+    duckdb-bin
 
     claude-code.packages.${pkgs.system}.default
 

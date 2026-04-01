@@ -27,7 +27,7 @@
         duckdb-bin = let
           suffix = if pkgs.stdenv.isDarwin then "osx-arm64.zip" else "linux-amd64.zip";
           hash = if pkgs.stdenv.isDarwin 
-                 then "sha256-K8mZpP7VvMvXvXvXvXvXvXvXvXvXvXvXvXvXvXvXvX=" # You will get a hash error; copy the real one from the error message
+                 then "sha256-7itTKqSg1LrPp38gSUW/ykRJ/2FW46zFenXcXTxsvz8="
                  else "sha256-F5pIHt8EjdH+8PCX1mkztLX1pXN9QDTGReQV7HIsApI=";
         in pkgs.stdenv.mkDerivation rec {
           pname = "duckdb-bin";

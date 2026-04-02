@@ -1,4 +1,4 @@
-{ config, pkgs, duckdb-bin, claude-code, isWork, ... }:
+{ config, pkgs, duckdb-bin, lib, claude-code, isWork, ... }:
 
 let
   # Import our custom package
@@ -207,16 +207,17 @@ in
     shellAliases = {
       vim = "nvim";
       vi = "nvim";
-      docker = "podman";
       yolo = "claude --dangerously-skip-permissions";
       # --- Explicit WSL Windows Aliases ---
       code = "\"/mnt/c/Users/CaryLee/AppData/Local/Programs/Microsoft VS Code/bin/code\"";
-      
+
       # Standard Windows utilities
       explorer = "/mnt/c/Windows/explorer.exe";
       clip = "/mnt/c/Windows/System32/clip.exe";
       cmd = "/mnt/c/Windows/System32/cmd.exe";
       powershell = "/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe";
+    } // lib.optionalAttrs pkgs.stdenv.isLinux {
+      docker = "podman";
     };
 
     initContent = ''
@@ -490,9 +491,6 @@ in
 
     linear-cli
 
-    podman
-    podman-compose
-
     curl
     wget
     unzip
@@ -534,7 +532,11 @@ in
     #   echo "Hello, ${config.home.username}!"
     # '')
   # CONDITIONAL PACKAGE: Only install wslu if we are on Linux
-    ] ++ (if pkgs.stdenv.isLinux then [ wslu ] else [])
+    ] ++ (if pkgs.stdenv.isLinux then [
+      wslu
+      podman
+      podman-compose
+    ] else [])
     ++ (if isWork then [] else [yt-dlp]);
 
   # Home Manager is pretty good at managing dotfiles. The primary way to manage
@@ -544,15 +546,17 @@ in
     # # the Nix store. Activating the configuration will then make '~/.screenrc' a
     # # symlink to the Nix store copy.
     # ".screenrc".source = dotfiles/screenrc;
-    ".config/containers/policy.json".text = ''
-    {
-      "default": [
-        {
-	  "type": "insecureAcceptAnything"
-	}
-      ]
-    }
-    '';
+    ".config/containers/policy.json" = lib.mkIf pkgs.stdenv.isLinux {
+      text = ''
+      {
+        "default": [
+          {
+            "type": "insecureAcceptAnything"
+          }
+        ]
+      }
+      '';
+    };
 
     # # You can also set the file content immediately.
     # ".gradle/gradle.properties".text = ''

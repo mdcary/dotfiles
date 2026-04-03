@@ -83,6 +83,9 @@
               enable = true;
               onActivation.autoUpdate = true;
               onActivation.cleanup = "zap";
+              brews = [
+                "yt-dlp"
+              ];
               casks = [
                 "1password"
                 "discord"

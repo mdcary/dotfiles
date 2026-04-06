@@ -10,7 +10,9 @@ in
   home.username = "cary";
   home.homeDirectory = "/home/cary";
   home.sessionPath = [
-    "$HOME/.local/bin"
+    "$HOME/.local/bin",
+    "$HOME/.cache/.bun/bin",
+    "$HOME/.dotnet/tools/",
   ];
   xdg.enable = true;
   xdg.configFile."nvim".source = ./dotfiles/nvim;
@@ -197,6 +199,14 @@ in
       vi = "nvim";
       docker = "podman";
       yolo = "claude --dangerously-skip-permissions";
+      # --- Explicit WSL Windows Aliases ---
+      code = "\"/mnt/c/Users/CaryLee/AppData/Local/Programs/Microsoft VS Code/bin/code\"";
+      
+      # Standard Windows utilities
+      explorer = "/mnt/c/Windows/explorer.exe";
+      clip = "/mnt/c/Windows/System32/clip.exe";
+      cmd = "/mnt/c/Windows/System32/cmd.exe";
+      powershell = "/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe";
     };
 
     initContent = ''

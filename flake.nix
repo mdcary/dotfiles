@@ -20,6 +20,7 @@
         config = {
           allowUnfreePredicate = pkg: builtins.elem (nixpkgs.lib.getName pkg) [
             "claude-code"
+            "msodbcsql17"
           ];
         };
       };

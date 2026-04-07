@@ -10,9 +10,9 @@ in
   home.username = "cary";
   home.homeDirectory = "/home/cary";
   home.sessionPath = [
-    "$HOME/.local/bin",
-    "$HOME/.cache/.bun/bin",
-    "$HOME/.dotnet/tools/",
+    "$HOME/.local/bin"
+    "$HOME/.cache/.bun/bin"
+    "$HOME/.dotnet/tools/"
   ];
   xdg.enable = true;
   xdg.configFile."nvim".source = ./dotfiles/nvim;
@@ -24,6 +24,38 @@ in
       user = {
         name = "Cary Lee";
         email = "clee@mdclarity.com";
+      };
+    };
+  };
+  programs.pandoc = {
+    enable = true;
+
+    # 1. Global settings (converted to a YAML/JSON defaults file automatically)
+    defaults = {
+      metadata = {
+        author = "Cary Lee";
+      };
+      pdf-engine = "xelatex"; # Or "wkhtmltopdf", "weasyprint", etc.
+      variables = {
+        # Typography: Use clean system fonts
+        mainfont = "DejaVu Serif"; 
+        sansfont = "DejaVu Sans";
+        monofont = "FiraCode Nerd Font"; # Great for code blocks
+        fontsize = "11pt";
+
+        # Layout: Modern margins (default LaTeX margins are huge)
+        geometry = [
+          "margin=1in"
+          "heightrounded"
+        ];
+
+        # Document properties
+        colorlinks = true;
+        linkcolor = "blue";
+        urlcolor = "blue";
+        
+        # Section numbering
+        numbersections = true;
       };
     };
   };
@@ -417,9 +449,13 @@ in
     jq
     sesh
 
+    texlive.combined.scheme-small
+
     ffmpeg
 
     linear-cli
+
+    unixODBCDrivers.msodbcsql17
 
     podman
     podman-compose
@@ -429,6 +465,8 @@ in
     unzip
     zip
     perl
+
+    pkgs.nerd-fonts.fira-code
 
     duckdb-1-5-bin
 
@@ -457,6 +495,16 @@ in
     # # the Nix store. Activating the configuration will then make '~/.screenrc' a
     # # symlink to the Nix store copy.
     # ".screenrc".source = dotfiles/screenrc;
+    ".config/odbcinst/odbcinst.ini".text = ''
+      [ODBC Driver 17 for SQL Server]
+      Description=Microsoft ODBC Driver 17 for SQL Server
+      Driver=${pkgs.unixODBCDrivers.msodbcsql17}/lib/libmsodbcsql-17.7.so.1.1
+
+      [ODBC Driver 18 for SQL Server]
+      Description=Microsoft ODBC Driver 18 for SQL Server
+      Driver=${pkgs.unixODBCDrivers.msodbcsql17}/lib/libmsodbcsql-18.1.so.1.1
+    '';
+
     ".config/containers/policy.json".text = ''
     {
       "default": [
@@ -492,6 +540,9 @@ in
   #
   home.sessionVariables = {
     EDITOR = "nvim";
+    # Make pyodbc (in venvs) find the nix-managed unixODBC + MSSQL driver
+    LD_LIBRARY_PATH = "${pkgs.unixODBC}/lib";
+    ODBCSYSINI = "${config.home.homeDirectory}/.config/odbcinst";
   };
 
   # Let Home Manager install and manage itself.

@@ -167,12 +167,19 @@ in
     enable = true;
   
     settings = {
-      "profile dev-admin" = {
+      "profile default" = {
         sso_session = "dev";
         sso_account_id = "367268567544";
         sso_role_name = "AWSAdministratorAccess";
         region = "us-east-2";
         default = true;
+      };
+
+      "profile dev-admin" = {
+        sso_session = "dev";
+        sso_account_id = "367268567544";
+        sso_role_name = "AWSAdministratorAccess";
+        region = "us-east-2";
       };
   
       "profile prod-admin" = {
@@ -476,6 +483,7 @@ in
     claude-code.packages.${pkgs.system}.default
 
     taws-bin
+    stu
 
     wslu
 

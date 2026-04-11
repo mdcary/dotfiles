@@ -1,4 +1,4 @@
-{ config, pkgs, duckdb-1-5-bin, claude-code, ... }:
+{ config, pkgs, duckdb-1-5-bin, claude-code, taws-bin, ... }:
 
 let
   # Import our custom package
@@ -460,6 +460,9 @@ in
     podman
     podman-compose
 
+    imagemagick
+    dos2unix
+
     curl
     wget
     unzip
@@ -471,6 +474,8 @@ in
     duckdb-1-5-bin
 
     claude-code.packages.${pkgs.system}.default
+
+    taws-bin
 
     wslu
 

@@ -25,6 +25,27 @@
         };
       };
 
+      # Add taws here
+      taws-bin = pkgs.stdenv.mkDerivation rec {
+        pname = "taws";
+        version = "1.3.0-rc.7"; # Ensure this matches the current release
+
+        src = pkgs.fetchurl {
+          url = "https://github.com/huseyinbabal/taws/releases/download/v${version}/taws-x86_64-unknown-linux-musl.tar.gz";
+          # Use a placeholder hash first, then update it with the one Nix complains about
+          hash = "sha256-14ahXuOUXHO6B7rSkdnfk0xwHB65WZ3UEly8Nqi1NUA="; 
+        };
+
+        # stdenv automatically handles .tar.gz unpacking
+        sourceRoot = ".";
+
+        installPhase = ''
+          mkdir -p $out/bin
+          cp taws $out/bin/
+          chmod +x $out/bin/taws
+        '';
+      };
+
       # Package the pre-compiled binary instead of compiling from source
       duckdb-1-5-bin = pkgs.stdenv.mkDerivation rec {
         pname = "duckdb-bin";
@@ -53,7 +74,7 @@
 
         # Pass the custom duckdb package into home.nix via 'extraSpecialArgs'
         extraSpecialArgs = {
-          inherit duckdb-1-5-bin claude-code;
+          inherit duckdb-1-5-bin claude-code taws-bin;
         };
 
         modules = [ ./home.nix ];

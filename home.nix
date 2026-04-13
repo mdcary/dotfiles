@@ -10,9 +10,9 @@ in
   home.username = "cary";
   home.homeDirectory = if pkgs.stdenv.isDarwin then "/Users/cary" else "/home/cary";
   home.sessionPath = [
-    "$HOME/.local/bin",
-    "$HOME/.cache/.bun/bin",
-    "$HOME/.dotnet/tools/",
+    "$HOME/.local/bin"
+    "$HOME/.cache/.bun/bin"
+    "$HOME/.dotnet/tools/"
   ];
   xdg.enable = true;
   xdg.configFile."nvim".source = ./dotfiles/nvim;

@@ -113,7 +113,7 @@
                 "google-chrome"
                 "vlc"
                 "google-drive"
-                #"naps2"
+                "naps2"
                 "steam"
                 "macwhisper"
                 "spotify"

@@ -1,61 +1,141 @@
 {
-  description = "Home Manager configuration of cary";
+  description = "System and Home Manager configuration of cary";
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
-    # Add the automated Claude Code flake
     claude-code.url = "github:sadjow/claude-code-nix";
+    
     home-manager = {
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    # 1. Add nix-darwin as an input
+    darwin = {
+      url = "github:LnL7/nix-darwin";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = { nixpkgs, home-manager, claude-code, ... }:
+  outputs = { self, nixpkgs, home-manager, darwin, claude-code, ... }:
     let
-      system = "x86_64-linux";
-
-      pkgs = import nixpkgs {
-        inherit system;
-        config = {
-          allowUnfreePredicate = pkg: builtins.elem (nixpkgs.lib.getName pkg) [
-            "claude-code"
-          ];
-        };
-      };
-
-      # Package the pre-compiled binary instead of compiling from source
-      duckdb-1-5-bin = pkgs.stdenv.mkDerivation rec {
+      # Extract your DuckDB derivation into a helper function 
+      # so both Linux and Mac configurations can use it easily.
+      mkDuckDb = pkgs: let
+        suffix = if pkgs.stdenv.isDarwin then "osx-arm64.zip" else "linux-amd64.zip";
+        hash = if pkgs.stdenv.isDarwin 
+               then "sha256-7itTKqSg1LrPp38gSUW/ykRJ/2FW46zFenXcXTxsvz8="
+               else "sha256-F5pIHt8EjdH+8PCX1mkztLX1pXN9QDTGReQV7HIsApI=";
+      in pkgs.stdenv.mkDerivation rec {
         pname = "duckdb-bin";
         version = "1.5.0";
-
         src = pkgs.fetchurl {
-          url = "https://github.com/duckdb/duckdb/releases/download/v${version}/duckdb_cli-linux-amd64.zip";
-          # You'll need to grab the real hash from the first failed run, just like before!
-          hash = "sha256-F5pIHt8EjdH+8PCX1mkztLX1pXN9QDTGReQV7HIsApI=";
+          url = "https://github.com/duckdb/duckdb/releases/download/v${version}/duckdb_cli-${suffix}";
+          inherit hash;
         };
-
         nativeBuildInputs = [ pkgs.unzip ];
-
         sourceRoot = ".";
-
-        installPhase = ''
-          mkdir -p $out/bin
-          cp duckdb $out/bin/
-          chmod +x $out/bin/duckdb
-        '';
+        installPhase = "mkdir -p $out/bin && cp duckdb $out/bin/ && chmod +x $out/bin/duckdb";
       };
     in
     {
-      homeConfigurations."cary" = home-manager.lib.homeManagerConfiguration {
+      # --- 1. LINUX (WSL) ---
+      # Remains a standalone Home Manager configuration
+      homeConfigurations."cary-linux" = let
+        pkgs = import nixpkgs { system = "x86_64-linux"; config.allowUnfree = true; };
+      in home-manager.lib.homeManagerConfiguration {
         inherit pkgs;
-
-        # Pass the custom duckdb package into home.nix via 'extraSpecialArgs'
-        extraSpecialArgs = {
-          inherit duckdb-1-5-bin claude-code;
+        extraSpecialArgs = { 
+          duckdb-bin = mkDuckDb pkgs; 
+          inherit claude-code; 
+          isWork = true; 
         };
-
         modules = [ ./home.nix ];
+      };
+
+      # --- 2. MAC (Darwin) ---
+      # Transitions to a system-level configuration that embeds Home Manager
+      darwinConfigurations."cary" = let
+        pkgs = import nixpkgs { system = "aarch64-darwin"; config.allowUnfree = true; };
+      in darwin.lib.darwinSystem {
+        system = "aarch64-darwin";
+        modules = [
+          # System-level Mac configurations go here
+          ({ pkgs, ... }: {
+            # Tell nix-darwin to let Determinate Systems manage the Nix daemon
+            nix.enable = false;
+
+            # nix.settings.experimental-features = "nix-command flakes";
+            programs.zsh.enable = true; # Required for nix-darwin to hook into your shell properly
+            system.stateVersion = 5;
+
+            # ---> THIS IS THE BLOCK TO ADD <---
+            users.users.cary = {
+              name = "cary";
+              home = "/Users/cary";
+            };
+
+            system.primaryUser = "cary";
+            # ----------------------------------
+
+            # Here is your Mac-only Homebrew configuration
+            homebrew = {
+              enable = true;
+              onActivation.autoUpdate = true;
+              onActivation.cleanup = "zap";
+              brews = [
+                "yt-dlp"
+              ];
+              casks = [
+                "1password"
+                "discord"
+                "obsidian"
+                "tailscale-app"
+                "microsoft-teams"
+                "zoom"
+                "calibre"
+                "1password"
+                "1password-cli"
+                "orbstack"
+                "iterm2"
+                "visual-studio-code"
+                "audacity"
+                "adobe-digital-editions"
+                "prusaslicer"
+                "openscad"
+                "raspberry-pi-imager"
+                "appcleaner"
+                "font-daddy-time-mono-nerd-font"
+                "font-inconsolata-nerd-font"
+                #"dymo-connect"
+                "claude"
+                "vuescan"
+                "google-chrome"
+                "vlc"
+                "google-drive"
+                "naps2"
+                "steam"
+                "macwhisper"
+                "spotify"
+
+
+              ];
+            };
+          })
+
+          # Embed your existing home.nix for the user 'cary'
+          home-manager.darwinModules.home-manager
+          {
+            home-manager.useGlobalPkgs = true;
+            home-manager.useUserPackages = true;
+            home-manager.extraSpecialArgs = { 
+              duckdb-bin = mkDuckDb pkgs; 
+              inherit claude-code; 
+              isWork = false; 
+            };
+            home-manager.users.cary = import ./home.nix;
+          }
+        ];
       };
     };
 }

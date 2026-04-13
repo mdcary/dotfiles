@@ -1,4 +1,4 @@
-{ config, pkgs, duckdb-1-5-bin, claude-code, ... }:
+{ config, pkgs, duckdb-bin, lib, claude-code, isWork, ... }:
 
 let
   # Import our custom package
@@ -8,7 +8,7 @@ in
   # Home Manager needs a bit of information about you and the paths it should
   # manage.
   home.username = "cary";
-  home.homeDirectory = "/home/cary";
+  home.homeDirectory = if pkgs.stdenv.isDarwin then "/Users/cary" else "/home/cary";
   home.sessionPath = [
     "$HOME/.local/bin",
     "$HOME/.cache/.bun/bin",
@@ -23,18 +23,28 @@ in
     settings = {
       user = {
         name = "Cary Lee";
-        email = "clee@mdclarity.com";
+        email = if isWork then "clee@mdclarity.com" else "carylee@gmail.com";
       };
     };
   };
   programs.git = {
     enable = true;
+
+    includes = [
+      {
+        condition = "gitdir:~/src/mdc/";
+        contents = {
+          user.email = "clee@mdclarity.com";
+        };
+      }
+    ];
   
     settings = {
       user = {
         name = "Cary Lee";
-        email = "clee@mdclarity.com";
+        email = if isWork then "clee@mdclarity.com" else "carylee@gmail.com";
       };
+
   
       init.defaultBranch = "main";
       pull.rebase = true;
@@ -106,7 +116,7 @@ in
   };
 
   programs.mr = {
-    enable = true;
+    enable = isWork;
 
     settings = {
       "src/mdc/Infrastructure" = {
@@ -197,16 +207,17 @@ in
     shellAliases = {
       vim = "nvim";
       vi = "nvim";
-      docker = "podman";
       yolo = "claude --dangerously-skip-permissions";
       # --- Explicit WSL Windows Aliases ---
       code = "\"/mnt/c/Users/CaryLee/AppData/Local/Programs/Microsoft VS Code/bin/code\"";
-      
+
       # Standard Windows utilities
       explorer = "/mnt/c/Windows/explorer.exe";
       clip = "/mnt/c/Windows/System32/clip.exe";
       cmd = "/mnt/c/Windows/System32/cmd.exe";
       powershell = "/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe";
+    } // lib.optionalAttrs pkgs.stdenv.isLinux {
+      docker = "podman";
     };
 
     initContent = ''
@@ -383,15 +394,71 @@ in
   programs.ssh = {
     enable = true;
     enableDefaultConfig = false;
+    extraConfig = ''
+      ${if pkgs.stdenv.isDarwin then ''
+        IdentityAgent "~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
+        Include ~/.orbstack/ssh/config
+        Include ~/.colima/ssh_config
+      '' else ""}
+    '';
     matchBlocks = {
+      # Grouping common Lightsail hosts for cleaner code
+      "alumnae nextcloud alumnae_docker alumnae_old" = {
+        user = "ubuntu"; # Overridden individually below where needed
+        identitiesOnly = true;
+      };
+
+      "alumnae" = {
+        hostname = "18.118.144.106";
+        user = "bitnami";
+      };
+
+      "axd" = {
+        hostname = "ssh.nyc1.nearlyfreespeech.net";
+        user = "caryme_alphaxidelta";
+        identitiesOnly = true;
+      };
+
+      "nextcloud" = { hostname = "18.220.94.108"; };
+
+      "alumnae_docker" = { hostname = "3.129.26.193"; };
+
+      "alumnae_hetzner" = {
+        hostname = "alumnae-docker";
+        user = "cary";
+        identitiesOnly = true;
+      };
+
+      "purple_folder" = {
+        hostname = "178.156.160.41";
+        user = "ubuntu";
+        identitiesOnly = true;
+      };
+
+      "flourish" = {
+        hostname = "ssh.nyc1.nearlyfreespeech.net";
+        user = "caryme_flourishinplace";
+      };
+
+      "fip" = {
+        hostname = "5.161.230.35";
+        user = "cary";
+        identitiesOnly = true;
+      };
+
+      "gringotts" = {
+        hostname = "192.168.8.3";
+        user = "cary";
+      };
+      
+      # Keep your baseline settings
       "*" = {
-    # sensible baseline; adjust as desired
         forwardAgent = false;
         serverAliveInterval = 60;
         serverAliveCountMax = 3;
+        addKeysToAgent = "yes";
         compression = true;
         hashKnownHosts = true;
-        addKeysToAgent = "yes";
       };
     };
   };
@@ -417,12 +484,12 @@ in
     jq
     sesh
 
+    #devtools
+    nodejs
+
     ffmpeg
 
     linear-cli
-
-    podman
-    podman-compose
 
     curl
     wget
@@ -430,11 +497,29 @@ in
     zip
     perl
 
-    duckdb-1-5-bin
+    duckdb-bin
 
     claude-code.packages.${pkgs.system}.default
 
-    wslu
+    ## Previously intalled via homebrew
+
+    # Document & Media utilities
+    pandoc
+    exiftool
+    poppler-utils
+    qpdf
+    imagemagick
+
+    # Network & sync
+    rclone
+    mosh
+
+    # System utilities
+    pwgen
+    watch
+    diskus
+
+    nmap
 
     # # It is sometimes useful to fine-tune packages, for example, by applying
     # # overrides. You can do that directly here, just don't forget the
@@ -448,7 +533,13 @@ in
     # (pkgs.writeShellScriptBin "my-hello" ''
     #   echo "Hello, ${config.home.username}!"
     # '')
-  ];
+  # CONDITIONAL PACKAGE: Only install wslu if we are on Linux
+    ] ++ (if pkgs.stdenv.isLinux then [
+      wslu
+      podman
+      podman-compose
+    ] else [])
+    ++ (if isWork then [] else []);
 
   # Home Manager is pretty good at managing dotfiles. The primary way to manage
   # plain files is through 'home.file'.
@@ -457,15 +548,17 @@ in
     # # the Nix store. Activating the configuration will then make '~/.screenrc' a
     # # symlink to the Nix store copy.
     # ".screenrc".source = dotfiles/screenrc;
-    ".config/containers/policy.json".text = ''
-    {
-      "default": [
-        {
-	  "type": "insecureAcceptAnything"
-	}
-      ]
-    }
-    '';
+    ".config/containers/policy.json" = lib.mkIf pkgs.stdenv.isLinux {
+      text = ''
+      {
+        "default": [
+          {
+            "type": "insecureAcceptAnything"
+          }
+        ]
+      }
+      '';
+    };
 
     # # You can also set the file content immediately.
     # ".gradle/gradle.properties".text = ''

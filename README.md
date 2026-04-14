@@ -1,69 +1,97 @@
-# Home Manager Configuration
+# dotfiles
 
-Nix Home Manager config with separate profiles for work and personal machines.
+Declarative system and dotfile configuration using [Nix](https://nixos.org/), [Home Manager](https://github.com/nix-community/home-manager), and [nix-darwin](https://github.com/LnL7/nix-darwin).
 
-## Structure
+Configuration is split into modular files that are composed per-machine:
 
-```
-flake.nix          # Flake entry point — defines both configurations
-home-common.nix    # Shared config (neovim, tmux, zsh, git base, fzf, starship, etc.)
-home-work.nix      # Work: git identity, awscli, ODBC, WSL aliases, MdClarity repos
-home-personal.nix  # Personal: git identity (expand as needed)
-home.nix           # Legacy single-file config (can be removed)
-dotfiles/          # Dotfiles managed by Home Manager (e.g. nvim config)
-pkgs/              # Custom package definitions (e.g. linear-cli)
-```
+- **`home-common.nix`** -- shared config (neovim, tmux, zsh, git base, SSH hosts, packages)
+- **`home-work.nix`** -- work-specific (WSL aliases, awscli, ODBC, MdClarity repos, git work identity)
+- **`home-personal.nix`** -- personal (git personal identity)
+
+The `flake.nix` defines three entry points:
+
+- **`homeConfigurations."cary@work"`** -- standalone Home Manager for WSL2 (work)
+- **`homeConfigurations."cary@home"`** -- standalone Home Manager for Linux (personal)
+- **`darwinConfigurations."cary"`** -- nix-darwin system config with Home Manager embedded, also managing Homebrew casks
 
 ## Prerequisites
 
-- [Nix](https://nixos.org/download/) with flakes enabled
-- [Home Manager](https://nix-community.github.io/home-manager/) (standalone install)
+Install Nix via [Determinate Systems installer](https://github.com/DeterminateSystems/nix-installer) (handles flakes and the daemon automatically):
 
-If flakes aren't enabled, add to `~/.config/nix/nix.conf`:
-
-```
-experimental-features = nix-command flakes
+```sh
+curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install
 ```
 
-## Usage
+## Setup
 
-### Switch to a configuration
+Clone this repo to `~/.config/home-manager`:
 
-```bash
-# On your work machine (WSL)
-home-manager switch --flake .#cary@work
-
-# On your personal machine
-home-manager switch --flake .#cary@home
+```sh
+git clone https://github.com/mdcary/dotfiles.git ~/.config/home-manager
 ```
 
-### Preview what will be built (without applying)
+### macOS
 
-```bash
-nix build .#homeConfigurations.cary@work.activationPackage --dry-run
-nix build .#homeConfigurations.cary@home.activationPackage --dry-run
+Install nix-darwin (first time only):
+
+```sh
+nix run nix-darwin -- switch --flake ~/.config/home-manager#cary
 ```
 
-### Update flake inputs (nixpkgs, home-manager, etc.)
+After the first run, apply changes with:
 
-```bash
-nix flake update
+```sh
+darwin-rebuild switch --flake ~/.config/home-manager#cary
 ```
 
-### Update a single input
+This manages:
+- All Nix packages and dotfiles from `home-common.nix` + `home-personal.nix`
+- Homebrew casks (1Password, VS Code, Discord, etc.) -- unmanaged casks are removed on activation via `zap`
+- System-level settings (shell, Nix daemon delegation)
 
-```bash
-nix flake update claude-code
+### Windows / WSL2
+
+From inside your WSL2 distribution:
+
+```sh
+home-manager switch --flake ~/.config/home-manager#cary@work
+```
+
+This manages:
+- All shared config from `home-common.nix`
+- Work-specific: awscli SSO profiles, MdClarity repos, ODBC drivers, WSL aliases
+- Linux-only extras: podman, podman-compose, wslu
+
+### Linux (Personal)
+
+```sh
+home-manager switch --flake ~/.config/home-manager#cary@home
 ```
 
 ## Adding configuration
 
-- **Shared across machines** — edit `home-common.nix`
-- **Work-only** (WSL, MdClarity tools, AWS) — edit `home-work.nix`
-- **Personal-only** — edit `home-personal.nix`
+- **Shared across all machines** -- edit `home-common.nix`
+- **Work-only** (WSL, MdClarity tools, AWS) -- edit `home-work.nix`
+- **Personal-only** -- edit `home-personal.nix`
+- **macOS system/Homebrew** -- edit the `darwinConfigurations` block in `flake.nix`
 
 Home Manager's module system merges attributes from all imported modules, so you can set `programs.zsh.shellAliases` in both common and work modules and they'll combine.
 
 ## Custom packages
 
-Packages not in nixpkgs are defined in `flake.nix` (e.g. `duckdb-1-5-bin`, `taws-bin`) or in `pkgs/` (e.g. `linear-cli`) and passed to modules via `extraSpecialArgs`.
+Packages not in nixpkgs are defined in `flake.nix` (e.g. `mkDuckDb`, `mkTaws`) or in `pkgs/` (e.g. `linear-cli`) and passed to modules via `extraSpecialArgs`.
+
+## Updating
+
+```sh
+# Update all flake inputs (nixpkgs, home-manager, nix-darwin, etc.)
+nix flake update
+
+# Update a single input
+nix flake update claude-code
+
+# Then re-apply
+darwin-rebuild switch --flake ~/.config/home-manager#cary        # macOS
+home-manager switch --flake ~/.config/home-manager#cary@work     # WSL2
+home-manager switch --flake ~/.config/home-manager#cary@home     # Linux personal
+```

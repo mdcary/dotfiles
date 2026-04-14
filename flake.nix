@@ -1,94 +1,148 @@
 {
-  description = "Home Manager configuration of cary";
+  description = "System and Home Manager configuration of cary";
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
-    # Add the automated Claude Code flake
     claude-code.url = "github:sadjow/claude-code-nix";
-    # Add the Google Workspace CLI flake here
     gws-cli.url = "github:googleworkspace/cli";
     home-manager = {
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    darwin = {
+      url = "github:LnL7/nix-darwin";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = { nixpkgs, home-manager, claude-code, gws-cli, ... }:
+  outputs = { self, nixpkgs, home-manager, darwin, claude-code, gws-cli, ... }:
     let
-      system = "x86_64-linux";
-
-      pkgs = import nixpkgs {
-        inherit system;
-        config = {
-          allowUnfreePredicate = pkg: builtins.elem (nixpkgs.lib.getName pkg) [
-            "claude-code"
-            "msodbcsql17"
-          ];
+      mkDuckDb = pkgs: let
+        suffix = if pkgs.stdenv.isDarwin then "osx-arm64.zip" else "linux-amd64.zip";
+        hash = if pkgs.stdenv.isDarwin
+               then "sha256-7itTKqSg1LrPp38gSUW/ykRJ/2FW46zFenXcXTxsvz8="
+               else "sha256-F5pIHt8EjdH+8PCX1mkztLX1pXN9QDTGReQV7HIsApI=";
+      in pkgs.stdenv.mkDerivation rec {
+        pname = "duckdb-bin";
+        version = "1.5.0";
+        src = pkgs.fetchurl {
+          url = "https://github.com/duckdb/duckdb/releases/download/v${version}/duckdb_cli-${suffix}";
+          inherit hash;
         };
+        nativeBuildInputs = [ pkgs.unzip ];
+        sourceRoot = ".";
+        installPhase = "mkdir -p $out/bin && cp duckdb $out/bin/ && chmod +x $out/bin/duckdb";
       };
 
-      # Add taws here
-      taws-bin = pkgs.stdenv.mkDerivation rec {
+      mkTaws = pkgs: pkgs.stdenv.mkDerivation rec {
         pname = "taws";
-        version = "1.3.0-rc.7"; # Ensure this matches the current release
-
+        version = "1.3.0-rc.7";
         src = pkgs.fetchurl {
           url = "https://github.com/huseyinbabal/taws/releases/download/v${version}/taws-x86_64-unknown-linux-musl.tar.gz";
-          # Use a placeholder hash first, then update it with the one Nix complains about
-          hash = "sha256-14ahXuOUXHO6B7rSkdnfk0xwHB65WZ3UEly8Nqi1NUA="; 
+          hash = "sha256-14ahXuOUXHO6B7rSkdnfk0xwHB65WZ3UEly8Nqi1NUA=";
         };
-
-        # stdenv automatically handles .tar.gz unpacking
         sourceRoot = ".";
-
         installPhase = ''
           mkdir -p $out/bin
           cp taws $out/bin/
           chmod +x $out/bin/taws
         '';
       };
-
-      # Package the pre-compiled binary instead of compiling from source
-      duckdb-1-5-bin = pkgs.stdenv.mkDerivation rec {
-        pname = "duckdb-bin";
-        version = "1.5.0";
-
-        src = pkgs.fetchurl {
-          url = "https://github.com/duckdb/duckdb/releases/download/v${version}/duckdb_cli-linux-amd64.zip";
-          # You'll need to grab the real hash from the first failed run, just like before!
-          hash = "sha256-F5pIHt8EjdH+8PCX1mkztLX1pXN9QDTGReQV7HIsApI=";
-        };
-
-        nativeBuildInputs = [ pkgs.unzip ];
-
-        sourceRoot = ".";
-
-        installPhase = ''
-          mkdir -p $out/bin
-          cp duckdb $out/bin/
-          chmod +x $out/bin/duckdb
-        '';
-      };
     in
     {
-      homeConfigurations."cary@work" = home-manager.lib.homeManagerConfiguration {
+      # --- Linux (WSL) - Work ---
+      homeConfigurations."cary@work" = let
+        pkgs = import nixpkgs { system = "x86_64-linux"; config.allowUnfree = true; };
+      in home-manager.lib.homeManagerConfiguration {
         inherit pkgs;
-
         extraSpecialArgs = {
-          inherit duckdb-1-5-bin claude-code taws-bin gws-cli;
+          duckdb-bin = mkDuckDb pkgs;
+          taws-bin = mkTaws pkgs;
+          inherit claude-code gws-cli;
         };
-
         modules = [ ./home-common.nix ./home-work.nix ];
       };
 
-      homeConfigurations."cary@home" = home-manager.lib.homeManagerConfiguration {
+      # --- Linux - Personal ---
+      homeConfigurations."cary@home" = let
+        pkgs = import nixpkgs { system = "x86_64-linux"; config.allowUnfree = true; };
+      in home-manager.lib.homeManagerConfiguration {
         inherit pkgs;
-
         extraSpecialArgs = {
-          inherit duckdb-1-5-bin claude-code gws-cli;
+          duckdb-bin = mkDuckDb pkgs;
+          inherit claude-code gws-cli;
         };
-
         modules = [ ./home-common.nix ./home-personal.nix ];
+      };
+
+      # --- macOS (Darwin) ---
+      darwinConfigurations."cary" = let
+        pkgs = import nixpkgs { system = "aarch64-darwin"; config.allowUnfree = true; };
+      in darwin.lib.darwinSystem {
+        system = "aarch64-darwin";
+        modules = [
+          ({ pkgs, ... }: {
+            nix.enable = false;
+            programs.zsh.enable = true;
+            system.stateVersion = 5;
+
+            users.users.cary = {
+              name = "cary";
+              home = "/Users/cary";
+            };
+            system.primaryUser = "cary";
+
+            homebrew = {
+              enable = true;
+              onActivation.autoUpdate = true;
+              onActivation.cleanup = "zap";
+              brews = [
+                "yt-dlp"
+              ];
+              casks = [
+                "1password"
+                "1password-cli"
+                "discord"
+                "obsidian"
+                "tailscale-app"
+                "microsoft-teams"
+                "zoom"
+                "calibre"
+                "orbstack"
+                "iterm2"
+                "visual-studio-code"
+                "audacity"
+                "adobe-digital-editions"
+                "prusaslicer"
+                "openscad"
+                "raspberry-pi-imager"
+                "appcleaner"
+                "font-daddy-time-mono-nerd-font"
+                "font-inconsolata-nerd-font"
+                "claude"
+                "vuescan"
+                "google-chrome"
+                "vlc"
+                "google-drive"
+                "naps2"
+                "steam"
+                "macwhisper"
+                "spotify"
+              ];
+            };
+          })
+
+          home-manager.darwinModules.home-manager
+          {
+            home-manager.useGlobalPkgs = true;
+            home-manager.useUserPackages = true;
+            home-manager.extraSpecialArgs = {
+              duckdb-bin = mkDuckDb pkgs;
+              inherit claude-code gws-cli;
+            };
+            home-manager.users.cary = { imports = [ ./home-common.nix ./home-personal.nix ]; };
+          }
+        ];
       };
     };
 }

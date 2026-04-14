@@ -24,7 +24,7 @@ in
       email = "clee@mdclarity.com";
     };
 
-    core.sshCommand = "/mnt/c/Windows/System32/OpenSSH/ssh.exe -i C:/Users/YOUR_WINDOWS_USERNAME/.ssh/id_work.pub";
+    core.sshCommand = "/mnt/c/Windows/System32/OpenSSH/ssh.exe -i $HOME/.ssh/id_work.pub";
   };
 
   programs.git.includes = [
@@ -35,7 +35,7 @@ in
           name = "Cary Lee";
           email = "carylee@gmail.com";
         };
-        core.sshCommand = "/mnt/c/Windows/System32/OpenSSH/ssh.exe -i C:/Users/YOUR_WINDOWS_USERNAME/.ssh/id_personal.pub";
+        core.sshCommand = "/mnt/c/Windows/System32/OpenSSH/ssh.exe -i $HOME/.ssh/id_personal.pub";
       };
     }
   ];

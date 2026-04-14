@@ -1,8 +1,8 @@
-{ config, pkgs, duckdb-1-5-bin, claude-code, gws-cli, ... }:
+{ config, pkgs, lib, duckdb-bin, claude-code, gws-cli, ... }:
 
 {
   home.username = "cary";
-  home.homeDirectory = "/home/cary";
+  home.homeDirectory = if pkgs.stdenv.isDarwin then "/Users/cary" else "/home/cary";
   home.sessionPath = [
     "$HOME/.local/bin"
     "$HOME/.cache/.bun/bin"
@@ -255,14 +255,69 @@
   programs.ssh = {
     enable = true;
     enableDefaultConfig = false;
+    extraConfig = ''
+      ${if pkgs.stdenv.isDarwin then ''
+        IdentityAgent "~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
+        Include ~/.orbstack/ssh/config
+        Include ~/.colima/ssh_config
+      '' else ""}
+    '';
     matchBlocks = {
+      "alumnae nextcloud alumnae_docker alumnae_old" = {
+        user = "ubuntu";
+        identitiesOnly = true;
+      };
+
+      "alumnae" = {
+        hostname = "18.118.144.106";
+        user = "bitnami";
+      };
+
+      "axd" = {
+        hostname = "ssh.nyc1.nearlyfreespeech.net";
+        user = "caryme_alphaxidelta";
+        identitiesOnly = true;
+      };
+
+      "nextcloud" = { hostname = "18.220.94.108"; };
+
+      "alumnae_docker" = { hostname = "3.129.26.193"; };
+
+      "alumnae_hetzner" = {
+        hostname = "alumnae-docker";
+        user = "cary";
+        identitiesOnly = true;
+      };
+
+      "purple_folder" = {
+        hostname = "178.156.160.41";
+        user = "ubuntu";
+        identitiesOnly = true;
+      };
+
+      "flourish" = {
+        hostname = "ssh.nyc1.nearlyfreespeech.net";
+        user = "caryme_flourishinplace";
+      };
+
+      "fip" = {
+        hostname = "5.161.230.35";
+        user = "cary";
+        identitiesOnly = true;
+      };
+
+      "gringotts" = {
+        hostname = "192.168.8.3";
+        user = "cary";
+      };
+
       "*" = {
         forwardAgent = false;
         serverAliveInterval = 60;
         serverAliveCountMax = 3;
+        addKeysToAgent = "yes";
         compression = true;
         hashKnownHosts = true;
-        addKeysToAgent = "yes";
       };
     };
   };
@@ -276,6 +331,8 @@
     fd
     jq
     sesh
+
+    nodejs
 
     texlive.combined.scheme-small
 
@@ -292,9 +349,24 @@
 
     google-cloud-sdk
 
+    # Document & media utilities
+    exiftool
+    poppler-utils
+    qpdf
+
+    # Network & sync
+    rclone
+    mosh
+
+    # System utilities
+    pwgen
+    watch
+    diskus
+    nmap
+
     pkgs.nerd-fonts.fira-code
 
-    duckdb-1-5-bin
+    duckdb-bin
 
     gws-cli.packages.${pkgs.system}.default
 
@@ -302,15 +374,17 @@
   ];
 
   home.file = {
-    ".config/containers/policy.json".text = ''
-    {
-      "default": [
-        {
-	  "type": "insecureAcceptAnything"
-	}
-      ]
-    }
-    '';
+    ".config/containers/policy.json" = lib.mkIf pkgs.stdenv.isLinux {
+      text = ''
+      {
+        "default": [
+          {
+            "type": "insecureAcceptAnything"
+          }
+        ]
+      }
+      '';
+    };
   };
 
   home.sessionVariables = {

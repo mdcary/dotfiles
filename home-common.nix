@@ -1,4 +1,4 @@
-{ config, pkgs, duckdb-1-5-bin, claude-code, gws, ... }:
+{ config, pkgs, duckdb-1-5-bin, claude-code, gws-cli, ... }:
 
 {
   home.username = "cary";
@@ -296,7 +296,7 @@
 
     duckdb-1-5-bin
 
-    gws.packages.${pkgs.system}.default
+    gws-cli.packages.${pkgs.system}.default
 
     claude-code.packages.${pkgs.system}.default
   ];

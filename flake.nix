@@ -6,14 +6,14 @@
     # Add the automated Claude Code flake
     claude-code.url = "github:sadjow/claude-code-nix";
     # Add the Google Workspace CLI flake here
-    gws.url = "github:googleworkspace/cli";
+    gws-cli.url = "github:googleworkspace/cli";
     home-manager = {
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
 
-  outputs = { nixpkgs, home-manager, claude-code, gws, ... }:
+  outputs = { nixpkgs, home-manager, claude-code, gws-cli, ... }:
     let
       system = "x86_64-linux";
 
@@ -75,7 +75,7 @@
         inherit pkgs;
 
         extraSpecialArgs = {
-          inherit duckdb-1-5-bin claude-code taws-bin;
+          inherit duckdb-1-5-bin claude-code taws-bin gws-cli;
         };
 
         modules = [ ./home-common.nix ./home-work.nix ];
@@ -85,7 +85,7 @@
         inherit pkgs;
 
         extraSpecialArgs = {
-          inherit duckdb-1-5-bin claude-code;
+          inherit duckdb-1-5-bin claude-code gws-cli;
         };
 
         modules = [ ./home-common.nix ./home-personal.nix ];

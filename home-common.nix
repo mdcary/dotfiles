@@ -1,4 +1,4 @@
-{ config, pkgs, duckdb-1-5-bin, claude-code, ... }:
+{ config, pkgs, duckdb-1-5-bin, claude-code, gws, ... }:
 
 {
   home.username = "cary";
@@ -290,9 +290,13 @@
     zip
     perl
 
+    google-cloud-sdk
+
     pkgs.nerd-fonts.fira-code
 
     duckdb-1-5-bin
+
+    gws.packages.${pkgs.system}.default
 
     claude-code.packages.${pkgs.system}.default
   ];

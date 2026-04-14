@@ -5,13 +5,15 @@
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
     # Add the automated Claude Code flake
     claude-code.url = "github:sadjow/claude-code-nix";
+    # Add the Google Workspace CLI flake here
+    gws.url = "github:googleworkspace/cli";
     home-manager = {
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
 
-  outputs = { nixpkgs, home-manager, claude-code, ... }:
+  outputs = { nixpkgs, home-manager, claude-code, gws, ... }:
     let
       system = "x86_64-linux";
 

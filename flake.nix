@@ -69,15 +69,24 @@
       };
     in
     {
-      homeConfigurations."cary" = home-manager.lib.homeManagerConfiguration {
+      homeConfigurations."cary@work" = home-manager.lib.homeManagerConfiguration {
         inherit pkgs;
 
-        # Pass the custom duckdb package into home.nix via 'extraSpecialArgs'
         extraSpecialArgs = {
           inherit duckdb-1-5-bin claude-code taws-bin;
         };
 
-        modules = [ ./home.nix ];
+        modules = [ ./home-common.nix ./home-work.nix ];
+      };
+
+      homeConfigurations."cary@home" = home-manager.lib.homeManagerConfiguration {
+        inherit pkgs;
+
+        extraSpecialArgs = {
+          inherit duckdb-1-5-bin claude-code;
+        };
+
+        modules = [ ./home-common.nix ./home-personal.nix ];
       };
     };
 }

@@ -59,29 +59,33 @@ in
       };
     };
   };
+
   programs.git = {
     enable = true;
-  
+
+    # Following the new 'settings' structure from your trace warnings
     settings = {
       user = {
         name = "Cary Lee";
         email = "clee@mdclarity.com";
       };
-  
+
+      # Use Windows-style paths for the Windows ssh.exe binary
+      core = {
+        editor = "nvim";
+        autocrlf = "input";
+        # IMPORTANT: ssh.exe needs Windows paths (C:/...) not Linux paths (~/...)
+        sshCommand = "/mnt/c/Windows/System32/OpenSSH/ssh.exe -i C:/Users/YOUR_WINDOWS_USERNAME/.ssh/id_work.pub";
+      };
+
       init.defaultBranch = "main";
       pull.rebase = true;
       rebase.autoStash = true;
       push.autoSetupRemote = true;
-  
-      core = {
-        editor = "nvim";
-        autocrlf = "input";
-      };
-  
       diff.colorMoved = "default";
       merge.conflictStyle = "zdiff3";
       rerere.enabled = true;
-  
+
       alias = {
         co = "checkout";
         br = "branch";
@@ -90,6 +94,21 @@ in
         lg = "log --graph --oneline --decorate --all";
       };
     };
+
+    includes = [
+      {
+        # Use 'gitdir/i' for case-insensitive matching (best for WSL)
+        # Ensure the trailing slash is present
+        condition = "gitdir/i:~/src/personal/"; 
+        contents = {
+          user = {
+            name = "Cary Lee";
+            email = "carylee@gmail.com";
+          };
+          core.sshCommand = "/mnt/c/Windows/System32/OpenSSH/ssh.exe -i C:/Users/YOUR_WINDOWS_USERNAME/.ssh/id_personal.pub";
+        };
+      }
+    ];
   };
 
   programs.gh = {
@@ -250,8 +269,12 @@ in
 
     initContent = ''
       export EDITOR=nvim
+
+      # Only auto-attach if we are NOT already in tmux and it's an interactive shell
       if [ -z "$TMUX" ] && [ -n "$PS1" ]; then
-        exec tmux new-session -A -s main
+        # If we explicitly set TMUX_SESSION, use that, otherwise default to "main"
+        SESSION_NAME=''${TMUX_SESSION:-main}
+        exec tmux new-session -A -s "$SESSION_NAME"
       fi
 
       setopt NO_BEEP

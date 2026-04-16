@@ -20,9 +20,6 @@
     enable = true;
 
     defaults = {
-      metadata = {
-        author = "Cary Lee";
-      };
       pdf-engine = "xelatex";
       variables = {
         mainfont = "DejaVu Serif";
@@ -336,6 +333,7 @@
     fd
     jq
     sesh
+    just
 
     nodejs
 

@@ -19,6 +19,7 @@
           python3
           uv
           openssl
+          semgrep
           
           # 1. ADD YOUR DRIVERS HERE
           unixodbc
@@ -28,7 +29,7 @@
         ];
 
         shellHook = ''
-          export LD_LIBRARY_PATH="${pkgs.lib.makeLibraryPath [ pkgs.unixODBC pkgs.stdenv.cc.cc.lib ]}:$LD_LIBRARY_PATH"
+          export LD_LIBRARY_PATH="${pkgs.lib.makeLibraryPath [ pkgs.unixOdbc pkgs.stdenv.cc.cc.lib ]}:$LD_LIBRARY_PATH"
           export UV_PROJECT_ENVIRONMENT=".venv"
 
           # 2. CREATE A LOCAL ODBC CONFIG DIRECTORY

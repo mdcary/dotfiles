@@ -1,13 +1,19 @@
 -- ~/.config/nvim/init.lua
+
+-- Disable netrw before any plugins load, so oil.nvim wins the
+-- directory-buffer handler race (e.g. `nvim .`, `:e somedir/`).
+vim.g.loaded_netrw = 1
+vim.g.loaded_netrwPlugin = 1
+
 local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
 local hotpotpath = vim.fn.stdpath("data") .. "/lazy/hotpot.nvim"
 
 -- 1. Bootstrap Hotpot (The Lisp Compiler)
 if not vim.uv.fs_stat(hotpotpath) then
-  vim.fn.system({"git", "clone", "--filter=blob:none", "https://github.com/rktjmp/hotpot.nvim.git", hotpotpath})
+  vim.fn.system({"git", "clone", "--filter=blob:none", "--branch=v2.0.0", "https://github.com/rktjmp/hotpot.nvim.git", hotpotpath})
 end
 vim.opt.rtp:prepend(hotpotpath)
-require("hotpot").setup()
+require("hotpot")
 
 -- 2. Bootstrap Lazy.nvim
 if not vim.uv.fs_stat(lazypath) then

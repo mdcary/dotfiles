@@ -6,12 +6,6 @@
 (set vim.g.mapleader " ")
 (set vim.g.maplocalleader " ")
 
-;; ==============================================================================
-;; 1. BASE OPTIONS & KEYMAPS
-;; ==============================================================================
-(set vim.g.mapleader " ")
-(set vim.g.maplocalleader " ")
-
 ;; --- UI & Display ---
 (set vim.opt.number true)
 
@@ -75,7 +69,10 @@
 ;; 2. PLUGIN SPECIFICATION (Using lazy.nvim)
 ;; ==============================================================================
 (local plugins
-       [;; UI: Catppuccin Theme
+       [;; LISP COMPILER: hotpot.nvim (already loaded by init.lua;
+        ;; listed here so Lazy can manage updates)
+        {1 :rktjmp/hotpot.nvim :version "^2.0.0" :lazy false}
+        ;; UI: Catppuccin Theme
         {1 :catppuccin/nvim
          :name :catppuccin
          :priority 1000
@@ -171,7 +168,10 @@
                      (vim.keymap.set :n :<leader>fg "<cmd>FzfLua live_grep<CR>"
                                      {:desc "Live Grep"})))}
         ;; FILE EXPLORER: oil.nvim
+        ;; Eager-loaded (per oil's README) so it registers its directory
+        ;; buffer handler before `nvim .` / `:e dir/` are used.
         {1 :stevearc/oil.nvim
+         :lazy false
          :dependencies [:nvim-tree/nvim-web-devicons]
          :opts {:default_file_explorer true
                 :delete_to_trash true
@@ -256,8 +256,15 @@
         {1 :folke/which-key.nvim
          :event :VeryLazy
          :opts {:preset :modern
+                :delay 200
+                :notify false
                 :spec [{1 :<leader>f :group "Find (Fzf)" :icon " "}
-                       {1 :<leader>c :group "Code Actions" :icon " "}]}}
+                       {1 :<leader>c :group "Code" :icon " "}
+                       {1 :<leader>r :group "Refactor" :icon " "}
+                       {1 :<leader>d :group "Diagnostics" :icon " "}
+                       {1 :<leader>w :group "Workspace" :icon " "}
+                       {1 :<leader>g :group "Git" :icon " "}
+                       {1 :<leader>n :group "Notifications" :icon " "}]}}
         ;; FORMATTING: conform.nvim
         {1 :stevearc/conform.nvim
          :opts {:formatters_by_ft {:lua [:stylua]
@@ -278,7 +285,9 @@
                 :format_on_save {:timeout_ms 500 :lsp_format :fallback}}}])
 
 ;; Run lazy.setup
-(let [lazy (require :lazy)]
+(let [lazy (require :lazy)
+      api (require :hotpot.api)
+      context (assert (api.context (vim.fn.stdpath :config)))]
   (lazy.setup plugins
               {:lockfile (.. (vim.fn.stdpath :state) :/lazy-lock.json)
-               :performance {:rtp {:reset false}}}))
+               :performance {:rtp {:paths [(context.locate :destination)]}}}))

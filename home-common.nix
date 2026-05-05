@@ -1,4 +1,4 @@
-{ config, pkgs, lib, duckdb-bin, claude-code, codex-cli, gws-cli, ... }:
+{ config, pkgs, lib, claude-code, codex-cli, gws-cli, ... }:
 
 {
   home.username = "cary";
@@ -370,8 +370,7 @@
 
     pkgs.nerd-fonts.fira-code
 
-    just
-    duckdb-bin
+    duckdb
 
     gws-cli.packages.${pkgs.system}.default
 

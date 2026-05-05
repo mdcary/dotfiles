@@ -18,23 +18,6 @@
 
   outputs = { self, nixpkgs, home-manager, darwin, claude-code, codex-cli, gws-cli, ... }:
     let
-      mkDuckDb = pkgs: let
-        suffix = if pkgs.stdenv.isDarwin then "osx-arm64.zip" else "linux-amd64.zip";
-        hash = if pkgs.stdenv.isDarwin
-               then "sha256-7itTKqSg1LrPp38gSUW/ykRJ/2FW46zFenXcXTxsvz8="
-               else "sha256-F5pIHt8EjdH+8PCX1mkztLX1pXN9QDTGReQV7HIsApI=";
-      in pkgs.stdenv.mkDerivation rec {
-        pname = "duckdb-bin";
-        version = "1.5.0";
-        src = pkgs.fetchurl {
-          url = "https://github.com/duckdb/duckdb/releases/download/v${version}/duckdb_cli-${suffix}";
-          inherit hash;
-        };
-        nativeBuildInputs = [ pkgs.unzip ];
-        sourceRoot = ".";
-        installPhase = "mkdir -p $out/bin && cp duckdb $out/bin/ && chmod +x $out/bin/duckdb";
-      };
-
       mkTaws = pkgs: pkgs.stdenv.mkDerivation rec {
         pname = "taws";
         version = "1.3.0-rc.7";
@@ -57,7 +40,6 @@
       in home-manager.lib.homeManagerConfiguration {
         inherit pkgs;
         extraSpecialArgs = {
-          duckdb-bin = mkDuckDb pkgs;
           taws-bin = mkTaws pkgs;
           inherit claude-code codex-cli gws-cli;
         };
@@ -70,7 +52,6 @@
       in home-manager.lib.homeManagerConfiguration {
         inherit pkgs;
         extraSpecialArgs = {
-          duckdb-bin = mkDuckDb pkgs;
           inherit claude-code codex-cli gws-cli;
         };
         modules = [ ./home-common.nix ./home-personal.nix ];
@@ -142,7 +123,6 @@
             home-manager.useGlobalPkgs = true;
             home-manager.useUserPackages = true;
             home-manager.extraSpecialArgs = {
-              duckdb-bin = mkDuckDb pkgs;
               inherit claude-code codex-cli gws-cli;
             };
             home-manager.users.cary = { imports = [ ./home-common.nix ./home-personal.nix ]; };

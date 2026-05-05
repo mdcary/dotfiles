@@ -117,6 +117,8 @@ in
   };
 
   programs.zsh.initContent = ''
+    export BROWSER='/mnt/c/Program Files/Google/Chrome/Application/chrome.exe'
+    export WINHOME='/mnt/c/Users/CaryLee'
     mktree() {
       local repo=$1
       local branch_id=$2
@@ -152,12 +154,12 @@ in
 
   home.packages = with pkgs; [
     linear-cli
+    d2
     unixODBCDrivers.msodbcsql17
     podman
     podman-compose
     taws-bin
     stu
-    wslu
   ];
 
   home.file = {
@@ -174,6 +176,8 @@ in
 
   home.file.".duckdbrc".text = ''
     -- Load extensions automatically
+    INSTALL httpfs;
+    INSTALL aws;
     SET autoload_known_extensions = true;
 
     -- Configure the secret using the environment's credential chain

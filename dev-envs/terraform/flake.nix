@@ -19,11 +19,15 @@
         (system:
           let
             pkgs = nixpkgs.legacyPackages.${system};
-            terraform = nixpkgs-terraform.packages.${system}."1.9.4";
+            terraform = nixpkgs-terraform.packages.${system}."terraform-1.9.4";
           in
           {
             default = pkgs.mkShell {
-              buildInputs = [ terraform ];
+              buildInputs = with pkgs; [
+                terraform
+                checkov
+              ];
+
             };
           });
     };

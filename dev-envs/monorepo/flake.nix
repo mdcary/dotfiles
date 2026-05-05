@@ -3,14 +3,20 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    nixpkgs-comby.url = "github:NixOS/nixpkgs/a421ac6595024edcfbb1ef950a3712b89161c359";
   };
 
-  outputs = { self, nixpkgs }:
+  outputs = { self, nixpkgs, nixpkgs-comby }:
     let
       system = "x86_64-linux"; 
       pkgs = import nixpkgs {
         inherit system;
         config.allowUnfree = true; 
+      };
+
+      # 3. Initialize the package set for the working comby commit
+      pkgs-comby = import nixpkgs-comby {
+        inherit system;
       };
     in
     {
@@ -20,6 +26,9 @@
           uv
           openssl
           semgrep
+          dotnet-sdk_10
+
+          pkgs-comby.comby
           
           # 1. ADD YOUR DRIVERS HERE
           unixodbc
@@ -29,7 +38,7 @@
         ];
 
         shellHook = ''
-          export LD_LIBRARY_PATH="${pkgs.lib.makeLibraryPath [ pkgs.unixOdbc pkgs.stdenv.cc.cc.lib ]}:$LD_LIBRARY_PATH"
+          export LD_LIBRARY_PATH="${pkgs.lib.makeLibraryPath [ pkgs.unixodbc pkgs.stdenv.cc.cc.lib ]}:$LD_LIBRARY_PATH"
           export UV_PROJECT_ENVIRONMENT=".venv"
 
           # 2. CREATE A LOCAL ODBC CONFIG DIRECTORY

@@ -98,10 +98,12 @@
               onActivation.cleanup = "zap";
               brews = [
                 "yt-dlp"
+                "deno"
               ];
               casks = [
                 "1password"
                 "1password-cli"
+                "macfuse"
                 "discord"
                 "obsidian"
                 "tailscale-app"
@@ -123,6 +125,8 @@
                 "vuescan"
                 "google-chrome"
                 "vlc"
+                "firefox"
+                "handbrake"
                 "google-drive"
                 "naps2"
                 "steam"

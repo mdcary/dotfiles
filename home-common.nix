@@ -357,6 +357,7 @@
     # Network & sync
     rclone
     mosh
+    aria2
 
     # System utilities
     pwgen

@@ -10,7 +10,10 @@
   xdg.enable = true;
   xdg.configFile."nvim".source = ./dotfiles/nvim;
   programs.bun.enable = true;
+  programs.lazyworktree.enable = true;
+  programs.lazysql.enable = true;
   programs.uv.enable = true;
+  programs.codex.enable = true;
 
   programs.pandoc = {
     enable = true;
@@ -136,6 +139,7 @@
   };
 
   programs.fzf.enable = true;
+  programs.gemini-cli.enable = true;
   programs.zoxide.enable = true;
   programs.eza.enable = true;
   programs.starship.enable = true;

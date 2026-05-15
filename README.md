@@ -32,6 +32,8 @@ git clone https://github.com/mdcary/dotfiles.git ~/.config/home-manager
 
 ### macOS
 
+macOS is **personal-only** -- there is no `@work` / `@home` selector. `darwinConfigurations."cary"` is hardcoded to import `home-common.nix` + `home-personal.nix` (see `flake.nix`), so the same command applies regardless of context.
+
 Install nix-darwin (first time only):
 
 ```sh

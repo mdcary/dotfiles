@@ -127,7 +127,7 @@
                 "google-chrome"
                 "vlc"
                 "firefox"
-                "handbrake"
+                "handbrake-app"
                 "google-drive"
                 "naps2"
                 "steam"

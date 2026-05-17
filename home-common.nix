@@ -1,4 +1,4 @@
-{ config, pkgs, lib, duckdb-bin, claude-code, gws-cli, ... }:
+{ config, pkgs, lib, duckdb-bin, claude-code, codex-cli, gws-cli, ... }:
 
 {
   home.username = "cary";
@@ -14,6 +14,7 @@
   programs.lazysql.enable = true;
   programs.uv.enable = true;
   programs.codex.enable = true;
+  programs.codex.package = codex-cli.packages.${pkgs.system}.default;
 
   programs.pandoc = {
     enable = true;
@@ -371,6 +372,7 @@
 
     pkgs.nerd-fonts.fira-code
 
+    just
     duckdb-bin
 
     gws-cli.packages.${pkgs.system}.default

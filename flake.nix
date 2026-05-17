@@ -4,6 +4,7 @@
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
     claude-code.url = "github:sadjow/claude-code-nix";
+    codex-cli.url = "github:sadjow/codex-cli-nix";
     gws-cli.url = "github:googleworkspace/cli";
     home-manager = {
       url = "github:nix-community/home-manager";
@@ -15,7 +16,7 @@
     };
   };
 
-  outputs = { self, nixpkgs, home-manager, darwin, claude-code, gws-cli, ... }:
+  outputs = { self, nixpkgs, home-manager, darwin, claude-code, codex-cli, gws-cli, ... }:
     let
       mkDuckDb = pkgs: let
         suffix = if pkgs.stdenv.isDarwin then "osx-arm64.zip" else "linux-amd64.zip";
@@ -58,7 +59,7 @@
         extraSpecialArgs = {
           duckdb-bin = mkDuckDb pkgs;
           taws-bin = mkTaws pkgs;
-          inherit claude-code gws-cli;
+          inherit claude-code codex-cli gws-cli;
         };
         modules = [ ./home-common.nix ./home-work.nix ];
       };
@@ -70,7 +71,7 @@
         inherit pkgs;
         extraSpecialArgs = {
           duckdb-bin = mkDuckDb pkgs;
-          inherit claude-code gws-cli;
+          inherit claude-code codex-cli gws-cli;
         };
         modules = [ ./home-common.nix ./home-personal.nix ];
       };
@@ -142,7 +143,7 @@
             home-manager.useUserPackages = true;
             home-manager.extraSpecialArgs = {
               duckdb-bin = mkDuckDb pkgs;
-              inherit claude-code gws-cli;
+              inherit claude-code codex-cli gws-cli;
             };
             home-manager.users.cary = { imports = [ ./home-common.nix ./home-personal.nix ]; };
           }

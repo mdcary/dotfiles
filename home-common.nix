@@ -384,6 +384,8 @@
     diskus
     nmap
 
+    tree
+
     pkgs.nerd-fonts.fira-code
 
     duckdb

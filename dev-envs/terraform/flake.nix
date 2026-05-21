@@ -25,6 +25,7 @@
             default = pkgs.mkShell {
               buildInputs = with pkgs; [
                 terraform
+                terragrunt
                 checkov
               ];
 

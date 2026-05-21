@@ -71,7 +71,7 @@
 (local plugins
        [;; LISP COMPILER: hotpot.nvim (already loaded by init.lua;
         ;; listed here so Lazy can manage updates)
-        {1 :rktjmp/hotpot.nvim :version "^2.0.0" :lazy false}
+        {1 :rktjmp/hotpot.nvim :version :^2.0.0 :lazy false}
         ;; UI: Catppuccin Theme
         {1 :catppuccin/nvim
          :name :catppuccin
@@ -259,12 +259,12 @@
                 :delay 200
                 :notify false
                 :spec [{1 :<leader>f :group "Find (Fzf)" :icon " "}
-                       {1 :<leader>c :group "Code" :icon " "}
-                       {1 :<leader>r :group "Refactor" :icon " "}
-                       {1 :<leader>d :group "Diagnostics" :icon " "}
-                       {1 :<leader>w :group "Workspace" :icon " "}
-                       {1 :<leader>g :group "Git" :icon " "}
-                       {1 :<leader>n :group "Notifications" :icon " "}]}}
+                       {1 :<leader>c :group :Code :icon " "}
+                       {1 :<leader>r :group :Refactor :icon " "}
+                       {1 :<leader>d :group :Diagnostics :icon " "}
+                       {1 :<leader>w :group :Workspace :icon " "}
+                       {1 :<leader>g :group :Git :icon " "}
+                       {1 :<leader>n :group :Notifications :icon " "}]}}
         ;; FORMATTING: conform.nvim
         {1 :stevearc/conform.nvim
          :opts {:formatters_by_ft {:lua [:stylua]

@@ -65,8 +65,10 @@ in
       "profile dev-admin"  = mkProfile "dev-admin" "367268567544" "AWSAdministratorAccess";
       "profile prod-admin" = mkProfile "prod-admin" "096002140659" "AWSAdministratorAccess";
       "profile devops"     = mkProfile "devops" "789261558096" "AWSAdministratorAccess";
-      "profile tools"      = mkProfile "tools" "616967731364" "AWSAdministratorAccess";
-      "profile billing"    = mkProfile "billing" "637217033209" "AWSAdministratorAccess";
+      "profile logs"      = mkProfile "logs" "616967731364" "AWSAdministratorAccess";
+      "profile audit"      = mkProfile "audit" "718557712346" "AWSAdministratorAccess";
+      "profile management"    = mkProfile "management" "637217033209" "AWSAdministratorAccess";
+      "profile omni"    = mkProfile "omni" "277207922039" "AWSAdministratorAccess";
 
       # Special case for Bedrock (different role)
       "profile bedrock"    = mkProfile "bedrock" "367268567544" "llm-tool-access";

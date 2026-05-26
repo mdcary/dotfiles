@@ -1,4 +1,4 @@
-{ config, pkgs, lib, duckdb-bin, claude-code, codex-cli, gws-cli, ... }:
+{ config, pkgs, lib, claude-code, codex-cli, gws-cli, ... }:
 
 {
   home.username = "cary";
@@ -20,9 +20,6 @@
     enable = true;
 
     defaults = {
-      metadata = {
-        author = "Cary Lee";
-      };
       pdf-engine = "xelatex";
       variables = {
         mainfont = "DejaVu Serif";
@@ -257,6 +254,22 @@
     ];
   };
 
+  # Recompile fennel config after each rebuild. The .fnl sources live in
+  # /nix/store with mtime=epoch-0, so hotpot's mtime-based sync would
+  # never notice a change without an explicit `force`.
+  home.activation.hotpotSync =
+    lib.hm.dag.entryAfter [ "linkGeneration" ] ''
+      HOTPOT_DIR="$HOME/.local/share/nvim/lazy/hotpot.nvim"
+      NVIM_CONFIG="$HOME/.config/nvim"
+      if [ -d "$HOTPOT_DIR" ] && [ -e "$NVIM_CONFIG/init.lua" ]; then
+        ${config.programs.neovim.finalPackage}/bin/nvim --headless \
+          "+Hotpot sync force context=$NVIM_CONFIG" \
+          "+qa" 2>&1 | sed 's/^/[hotpot-sync] /' || true
+      else
+        echo "[hotpot-sync] hotpot not bootstrapped yet; skipping"
+      fi
+    '';
+
   programs.ssh = {
     enable = true;
     enableDefaultConfig = false;
@@ -336,6 +349,7 @@
     fd
     jq
     sesh
+    just
 
     nodejs
 
@@ -370,10 +384,11 @@
     diskus
     nmap
 
+    tree
+
     pkgs.nerd-fonts.fira-code
 
-    just
-    duckdb-bin
+    duckdb
 
     gws-cli.packages.${pkgs.system}.default
 

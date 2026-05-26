@@ -117,6 +117,7 @@
     syntaxHighlighting.enable = true;
 
     shellAliases = {
+      docker = "podman";
       vim = "nvim";
       vi = "nvim";
       yolo = "claude --dangerously-skip-permissions";
@@ -307,6 +308,11 @@
         identitiesOnly = true;
       };
 
+      "codeberg.org" = {
+        hostname = "codeberg.org";
+        identityAgent = "\"~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock\"";
+      };
+      
       "purple_folder" = {
         hostname = "178.156.160.41";
         user = "ubuntu";
@@ -350,6 +356,8 @@
     jq
     sesh
     just
+    podman
+    podman-compose
 
     nodejs
 
@@ -367,11 +375,15 @@
     perl
 
     google-cloud-sdk
+    ghostscript
+
+    babashka
 
     # Document & media utilities
     exiftool
     poppler-utils
     qpdf
+    typst
 
     # Network & sync
     rclone
@@ -385,6 +397,7 @@
     nmap
 
     tree
+    pdftk
 
     pkgs.nerd-fonts.fira-code
 

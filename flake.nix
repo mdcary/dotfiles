@@ -65,6 +65,7 @@
         modules = [
           ({ pkgs, ... }: {
             nix.enable = false;
+            nixpkgs.config.allowUnfree = true;
             programs.zsh.enable = true;
             system.stateVersion = 5;
 
@@ -84,6 +85,8 @@
               ];
               casks = [
                 "1password"
+                "libreoffice"
+                "font-raleway"
                 "1password-cli"
                 "macfuse"
                 "discord"

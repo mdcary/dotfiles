@@ -15,4 +15,13 @@
       };
     };
   };
+
+  home.packages = with pkgs; [
+    isync
+    notmuch
+  ];
+
+  programs.zsh.shellAliases = {
+    soffice = "/Applications/LibreOffice.app/Contents/MacOS/soffice";
+  };
 }

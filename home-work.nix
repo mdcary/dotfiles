@@ -109,7 +109,6 @@ in
   };
 
   programs.zsh.shellAliases = {
-    docker = "podman";
     # WSL Windows aliases
     code = "\"/mnt/c/Users/CaryLee/AppData/Local/Programs/Microsoft VS Code/bin/code\"";
     explorer = "/mnt/c/Windows/explorer.exe";
@@ -158,8 +157,6 @@ in
     linear-cli
     d2
     unixODBCDrivers.msodbcsql17
-    podman
-    podman-compose
     taws-bin
     stu
   ];

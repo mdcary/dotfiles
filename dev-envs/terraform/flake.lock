@@ -2,11 +2,11 @@
   "nodes": {
     "nixpkgs": {
       "locked": {
-        "lastModified": 1772956932,
-        "narHash": "sha256-M0yS4AafhKxPPmOHGqIV0iKxgNO8bHDWdl1kOwGBwRY=",
+        "lastModified": 1779694939,
+        "narHash": "sha256-Ly4j75O8ICaSQx3uxPnwk2x7PMF0XQvn5r0c3yBA7FI=",
         "owner": "nixos",
         "repo": "nixpkgs",
-        "rev": "608d0cadfed240589a7eea422407a547ad626a14",
+        "rev": "f9d8b65950353691ab56561e7c73d2e1063d810b",
         "type": "github"
       },
       "original": {
@@ -56,11 +56,11 @@
         "systems": "systems"
       },
       "locked": {
-        "lastModified": 1772561659,
-        "narHash": "sha256-TtRBfOIDs1Gx1AlgV3lUZN3nzaWF1nUEFkHpnsdHttM=",
+        "lastModified": 1778860000,
+        "narHash": "sha256-CKXIRkZHcRmA56Umf+bAWMjQDsnxjTf58WtXvCTbR2Y=",
         "owner": "stackbuilders",
         "repo": "nixpkgs-terraform",
-        "rev": "7d0b31b317c882328d65c82cd06a205d88ad9f6c",
+        "rev": "7c15c1e1be0d02d8712433fb57ec123e010af4e7",
         "type": "github"
       },
       "original": {

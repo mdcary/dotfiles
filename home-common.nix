@@ -378,6 +378,7 @@
     ghostscript
 
     babashka
+    deno
 
     # Document & media utilities
     exiftool

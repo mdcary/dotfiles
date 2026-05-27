@@ -93,12 +93,15 @@
                                                    :callback (fn [args]
                                                                (vim.treesitter.start args.buf))})))}
         ;; Neovim
-        {1 :MeanderingProgrammer/render-markdown.nvim
-         :dependencies [:nvim-treesitter :nvim-mini/mini.nvim]
-         ;;;@module 'render-markdown'
-         ;;;@type render.md.UserConfig
-         :opts {}}
         ;; LSP: Mason & Nvim-Lspconfig
+        {1 :toppair/peek.nvim
+         :event [:VeryLazy]
+         :build "deno task --quiet build:fast"
+         :config (fn []
+                   (let [peek (require :peek)]
+                     (peek.setup)
+                     (vim.api.nvim_create_user_command :PeekOpen peek.open {})
+                     (vim.api.nvim_create_user_command :PeekClose peek.close {})))}
         {1 :neovim/nvim-lspconfig
          :dependencies [:williamboman/mason.nvim
                         :williamboman/mason-lspconfig.nvim]

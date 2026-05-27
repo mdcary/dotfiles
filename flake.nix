@@ -6,6 +6,7 @@
     claude-code.url = "github:sadjow/claude-code-nix";
     codex-cli.url = "github:sadjow/codex-cli-nix";
     gws-cli.url = "github:googleworkspace/cli";
+    mdr.url = "github:CleverCloud/mdr";
     home-manager = {
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -16,7 +17,7 @@
     };
   };
 
-  outputs = { self, nixpkgs, home-manager, darwin, claude-code, codex-cli, gws-cli, ... }:
+  outputs = { self, nixpkgs, home-manager, darwin, claude-code, codex-cli, gws-cli, mdr, ... }:
     let
       mkTaws = pkgs: pkgs.stdenv.mkDerivation rec {
         pname = "taws";
@@ -41,7 +42,7 @@
         inherit pkgs;
         extraSpecialArgs = {
           taws-bin = mkTaws pkgs;
-          inherit claude-code codex-cli gws-cli;
+          inherit claude-code codex-cli gws-cli mdr;
         };
         modules = [ ./home-common.nix ./home-work.nix ];
       };
@@ -52,7 +53,7 @@
       in home-manager.lib.homeManagerConfiguration {
         inherit pkgs;
         extraSpecialArgs = {
-          inherit claude-code codex-cli gws-cli;
+          inherit claude-code codex-cli gws-cli mdr;
         };
         modules = [ ./home-common.nix ./home-personal.nix ];
       };
@@ -126,7 +127,7 @@
             home-manager.useGlobalPkgs = true;
             home-manager.useUserPackages = true;
             home-manager.extraSpecialArgs = {
-              inherit claude-code codex-cli gws-cli;
+              inherit claude-code codex-cli gws-cli mdr;
             };
             home-manager.users.cary = { imports = [ ./home-common.nix ./home-personal.nix ]; };
           }

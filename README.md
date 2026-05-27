@@ -83,6 +83,26 @@ Home Manager's module system merges attributes from all imported modules, so you
 
 Packages not in nixpkgs are defined in `flake.nix` (e.g. `mkDuckDb`, `mkTaws`) or in `pkgs/` (e.g. `linear-cli`) and passed to modules via `extraSpecialArgs`.
 
+## Adding a neovim plugin
+
+Neovim is bootstrapped from `dotfiles/nvim/init.lua`, which clones [hotpot.nvim](https://github.com/rktjmp/hotpot.nvim) (Fennel compiler) and [lazy.nvim](https://github.com/folke/lazy.nvim), then hands off to `dotfiles/nvim/fnl/config.fnl`. All plugin specs live in that one Fennel file.
+
+1. **Add a lazy.nvim spec** to the `plugins` table in `dotfiles/nvim/fnl/config.fnl`. Fennel translates lazy's Lua spec straight across -- the plugin name (lazy's positional `[1]`) becomes `1`, and keyword keys are written `:opts`, `:dependencies`, `:keys`, `:config`, etc. For example:
+
+   ```fennel
+   {1 :folke/todo-comments.nvim
+    :dependencies [:nvim-lua/plenary.nvim]
+    :opts {}}
+   ```
+
+2. **Add any external binaries** the plugin needs (formatters, LSP servers, build tools) to `programs.neovim.extraPackages` in `home-common.nix`. Mason can install LSPs too, but pinning them here keeps them reproducible.
+
+3. **Apply the config** -- `home-manager switch ...` (or `darwin-rebuild switch ...`). The `home.activation.hotpotSync` hook in `home-common.nix` recompiles the Fennel against the new store path so changes pick up immediately.
+
+4. **Install the plugin** -- open `nvim` and run `:Lazy sync` (or just relaunch; lazy auto-installs missing plugins on startup). The lockfile at `~/.local/state/nvim/lazy-lock.json` pins versions; commit-bump plugins with `:Lazy update`.
+
+To remove a plugin, delete its spec and run `:Lazy clean`.
+
 ## Updating
 
 ```sh

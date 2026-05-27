@@ -92,6 +92,12 @@
                                                   {:pattern langs
                                                    :callback (fn [args]
                                                                (vim.treesitter.start args.buf))})))}
+        ;; Neovim
+        {1 :MeanderingProgrammer/render-markdown.nvim
+         :dependencies [:nvim-treesitter :nvim-mini/mini.nvim]
+         ;;;@module 'render-markdown'
+         ;;;@type render.md.UserConfig
+         :opts {}}
         ;; LSP: Mason & Nvim-Lspconfig
         {1 :neovim/nvim-lspconfig
          :dependencies [:williamboman/mason.nvim

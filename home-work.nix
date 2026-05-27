@@ -159,6 +159,7 @@ in
     unixODBCDrivers.msodbcsql17
     taws-bin
     stu
+    azure-cli
   ];
 
   home.file = {

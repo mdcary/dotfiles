@@ -156,7 +156,7 @@ in
   home.packages = with pkgs; [
     linear-cli
     d2
-    unixODBCDrivers.msodbcsql17
+    unixodbcDrivers.msodbcsql17
     taws-bin
     stu
     azure-cli
@@ -166,11 +166,11 @@ in
     ".config/odbcinst/odbcinst.ini".text = ''
       [ODBC Driver 17 for SQL Server]
       Description=Microsoft ODBC Driver 17 for SQL Server
-      Driver=${pkgs.unixODBCDrivers.msodbcsql17}/lib/libmsodbcsql-17.7.so.1.1
+      Driver=${pkgs.unixodbcDrivers.msodbcsql17}/lib/libmsodbcsql-17.7.so.1.1
 
       [ODBC Driver 18 for SQL Server]
       Description=Microsoft ODBC Driver 18 for SQL Server
-      Driver=${pkgs.unixODBCDrivers.msodbcsql17}/lib/libmsodbcsql-18.1.so.1.1
+      Driver=${pkgs.unixodbcDrivers.msodbcsql17}/lib/libmsodbcsql-18.1.so.1.1
     '';
   };
 
@@ -188,7 +188,7 @@ in
   '';
 
   home.sessionVariables = {
-    LD_LIBRARY_PATH = "${pkgs.unixODBC}/lib";
+    LD_LIBRARY_PATH = "${pkgs.unixodbc}/lib";
     ODBCSYSINI = "${config.home.homeDirectory}/.config/odbcinst";
   };
 }

@@ -408,6 +408,8 @@
     claude-code.packages.${pkgs.system}.default
 
     (pkgs.callPackage ./pkgs/mdr.nix { })
+
+    (pkgs.callPackage ./pkgs/ferrite.nix { })
   ];
 
   home.file = {

@@ -1,4 +1,4 @@
-{ config, pkgs, lib, claude-code, codex-cli, gws-cli, mdr, ... }:
+{ config, pkgs, lib, claude-code, codex-cli, gws-cli, ... }:
 
 {
   home.username = "cary";
@@ -406,8 +406,6 @@
     gws-cli.packages.${pkgs.system}.default
 
     claude-code.packages.${pkgs.system}.default
-
-    mdr.packages.${pkgs.system}.default
   ];
 
   home.file = {

@@ -81,6 +81,9 @@
               enable = true;
               onActivation.autoUpdate = true;
               onActivation.cleanup = "zap";
+              # Newer Homebrew refuses `brew bundle --cleanup` without a force
+              # flag; pass it explicitly so non-interactive activation works.
+              onActivation.extraFlags = [ "--force-cleanup" ];
               brews = [
                 "yt-dlp"
                 "deno"

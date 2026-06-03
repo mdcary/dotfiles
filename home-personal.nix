@@ -19,6 +19,7 @@
   home.packages = with pkgs; [
     isync
     notmuch
+    wrangler
   ];
 
   programs.zsh.shellAliases = {

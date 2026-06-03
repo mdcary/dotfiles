@@ -335,6 +335,11 @@
         user = "cary";
       };
 
+      "firstchurch" = {
+        hostname = "192.185.243.28";
+        user = "seattle1";
+      };
+
       "*" = {
         forwardAgent = false;
         serverAliveInterval = 60;

@@ -19,7 +19,9 @@
   home.packages = with pkgs; [
     isync
     notmuch
-    wrangler
+    # nixpkgs builds wrangler from source (broken on aarch64-darwin); use the
+    # prebuilt npm package instead. See pkgs/wrangler/default.nix.
+    (callPackage ./pkgs/wrangler { })
   ];
 
   programs.zsh.shellAliases = {

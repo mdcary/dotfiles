@@ -1,0 +1,7 @@
+{
+  "name": "wrangler-pin",
+  "version": "0.0.0",
+  "dependencies": {
+    "wrangler": "4.97.0"
+  }
+}

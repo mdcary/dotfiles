@@ -19,6 +19,9 @@
 (set vim.opt.cursorline true)
 
 ;; Highlight the current line
+(set vim.opt.cursorlineopt :number)
+
+;; Only highlight the line number, not the whole line — avoids j/k redraw lag
 (set vim.opt.signcolumn :yes)
 
 ;; Always show the gutter (prevents text shifting when errors appear)
@@ -94,12 +97,22 @@
                                                                (vim.treesitter.start args.buf))})))}
         ;; Neovim
         ;; LSP: Mason & Nvim-Lspconfig
+        {1 :MeanderingProgrammer/render-markdown.nvim
+         :dependencies [:nvim-treesitter/nvim-treesitter :nvim-mini/mini.nvim]
+         ;;;@module 'render-markdown'
+         ;;;@type render.md.UserConfig
+         :opts {}}
         {1 :toppair/peek.nvim
          :event [:VeryLazy]
          :build "deno task --quiet build:fast"
          :config (fn []
                    (let [peek (require :peek)]
-                     (peek.setup)
+                     ;; Under WSL the default `app = "webview"` needs a GUI
+                     ;; display we don't have. Hand the URL to Windows'
+                     ;; default browser via `cmd.exe /c start`. The empty
+                     ;; string after `start` is its window-title arg —
+                     ;; without it, `start` would consume the URL as the title.
+                     (peek.setup {:app [:cmd.exe :/c :start ""]})
                      (vim.api.nvim_create_user_command :PeekOpen peek.open {})
                      (vim.api.nvim_create_user_command :PeekClose peek.close {})))}
         {1 :neovim/nvim-lspconfig
@@ -200,8 +213,9 @@
                 ;; Auto-disables LSP/Treesitter on massive files so Nvim doesn't freeze
                 :quickfile {:enabled true}
                 ;; Renders files instantly before plugins even load
-                :words {:enabled true}
-                ;; Auto-highlights matching variables under your cursor
+                :words {:enabled false}
+                ;; Auto-highlights matching variables under your cursor — disabled,
+                ;; the CursorMoved LSP documentHighlight calls caused j/k lag
                 :zen {:enabled true}}
          ;; Distraction-free coding mode
          :keys [{1 :<leader>z
@@ -225,8 +239,12 @@
                      ((. (require :snacks) :words :jump) -1 true))
                  :desc "Prev Variable Reference"}]}
         ;; TMUX INTEGRATION: Smart-Splits (Navigation & Resizing)
+        ;; `:opts` is required — without it, setup() never runs and the
+        ;; `@pane-is-vim` tmux variable is never written, so the tmux side
+        ;; can't tell when to forward C-h/j/k/l to nvim.
         {1 :mrjones2014/smart-splits.nvim
          :lazy false
+         :opts {}
          :keys [;; Navigation
                 {1 :<C-h>
                  2 (fn []

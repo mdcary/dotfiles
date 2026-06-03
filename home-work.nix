@@ -63,6 +63,8 @@ in
       # 3. Define your profiles using the helper
       "profile default"    = mkProfile "default" "367268567544" "AWSAdministratorAccess";
       "profile dev-admin"  = mkProfile "dev-admin" "367268567544" "AWSAdministratorAccess";
+      "profile dev"  = mkProfile "dev" "367268567544" "dev-team-access";
+      "profile llm-tool-access"  = mkProfile "llm-tool-access" "367268567544" "llm-tool-access";
       "profile prod-admin" = mkProfile "prod-admin" "096002140659" "AWSAdministratorAccess";
       "profile devops"     = mkProfile "devops" "789261558096" "AWSAdministratorAccess";
       "profile logs"      = mkProfile "logs" "616967731364" "AWSAdministratorAccess";

@@ -3,6 +3,8 @@
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
+    # comby is broken in current nixos-unstable; pin to the last known-good commit.
+    nixpkgs-comby.url = "github:NixOS/nixpkgs/a421ac6595024edcfbb1ef950a3712b89161c359";
     claude-code.url = "github:sadjow/claude-code-nix";
     codex-cli.url = "github:sadjow/codex-cli-nix";
     gws-cli.url = "github:googleworkspace/cli";
@@ -16,7 +18,7 @@
     };
   };
 
-  outputs = { self, nixpkgs, home-manager, darwin, claude-code, codex-cli, gws-cli, ... }:
+  outputs = { self, nixpkgs, nixpkgs-comby, home-manager, darwin, claude-code, codex-cli, gws-cli, ... }:
     let
       mkTaws = pkgs: pkgs.stdenv.mkDerivation rec {
         pname = "taws";
@@ -41,7 +43,7 @@
         inherit pkgs;
         extraSpecialArgs = {
           taws-bin = mkTaws pkgs;
-          inherit claude-code codex-cli gws-cli;
+          inherit nixpkgs-comby claude-code codex-cli gws-cli;
         };
         modules = [ ./home-common.nix ./home-work.nix ];
       };
@@ -52,7 +54,7 @@
       in home-manager.lib.homeManagerConfiguration {
         inherit pkgs;
         extraSpecialArgs = {
-          inherit claude-code codex-cli gws-cli;
+          inherit nixpkgs-comby claude-code codex-cli gws-cli;
         };
         modules = [ ./home-common.nix ./home-personal.nix ];
       };
@@ -126,7 +128,7 @@
             home-manager.useGlobalPkgs = true;
             home-manager.useUserPackages = true;
             home-manager.extraSpecialArgs = {
-              inherit claude-code codex-cli gws-cli;
+              inherit nixpkgs-comby claude-code codex-cli gws-cli;
             };
             home-manager.users.cary = { imports = [ ./home-common.nix ./home-personal.nix ]; };
           }

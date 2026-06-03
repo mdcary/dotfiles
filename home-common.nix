@@ -1,4 +1,4 @@
-{ config, pkgs, lib, claude-code, codex-cli, gws-cli, ... }:
+{ config, pkgs, lib, nixpkgs-comby, claude-code, codex-cli, gws-cli, ... }:
 
 {
   home.username = "cary";
@@ -405,9 +405,14 @@
     tree
     pdftk
 
+    google-fonts
+
     pkgs.nerd-fonts.fira-code
 
     duckdb
+
+    # comby is broken in current nixos-unstable; pull it from a pinned nixpkgs commit.
+    (import nixpkgs-comby { inherit (pkgs) system; }).comby
 
     gws-cli.packages.${pkgs.system}.default
 
@@ -417,6 +422,8 @@
 
     (pkgs.callPackage ./pkgs/ferrite.nix { })
   ];
+
+  fonts.fontconfig.enable = true;
 
   home.file = {
     ".config/containers/policy.json" = lib.mkIf pkgs.stdenv.isLinux {

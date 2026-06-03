@@ -1,5 +1,9 @@
 { config, pkgs, lib, nixpkgs-comby, claude-code, codex-cli, gws-cli, ... }:
 
+let
+  # `pkgs.system` is deprecated; use the stdenv platform string.
+  system = pkgs.stdenv.hostPlatform.system;
+in
 {
   home.username = "cary";
   home.homeDirectory = if pkgs.stdenv.isDarwin then "/Users/cary" else "/home/cary";
@@ -14,7 +18,7 @@
   programs.lazysql.enable = true;
   programs.uv.enable = true;
   programs.codex.enable = true;
-  programs.codex.package = codex-cli.packages.${pkgs.system}.default;
+  programs.codex.package = codex-cli.packages.${system}.default;
 
   programs.pandoc = {
     enable = true;
@@ -281,72 +285,72 @@
         Include ~/.colima/ssh_config
       '' else ""}
     '';
-    matchBlocks = {
+    settings = {
       "alumnae nextcloud alumnae_docker alumnae_old" = {
-        user = "ubuntu";
-        identitiesOnly = true;
+        User = "ubuntu";
+        IdentitiesOnly = true;
       };
 
       "alumnae" = {
-        hostname = "18.118.144.106";
-        user = "bitnami";
+        HostName = "18.118.144.106";
+        User = "bitnami";
       };
 
       "axd" = {
-        hostname = "ssh.nyc1.nearlyfreespeech.net";
-        user = "caryme_alphaxidelta";
-        identitiesOnly = true;
+        HostName = "ssh.nyc1.nearlyfreespeech.net";
+        User = "caryme_alphaxidelta";
+        IdentitiesOnly = true;
       };
 
-      "nextcloud" = { hostname = "18.220.94.108"; };
+      "nextcloud" = { HostName = "18.220.94.108"; };
 
-      "alumnae_docker" = { hostname = "3.129.26.193"; };
+      "alumnae_docker" = { HostName = "3.129.26.193"; };
 
       "alumnae_hetzner" = {
-        hostname = "alumnae-docker";
-        user = "cary";
-        identitiesOnly = true;
+        HostName = "alumnae-docker";
+        User = "cary";
+        IdentitiesOnly = true;
       };
 
       "codeberg.org" = {
-        hostname = "codeberg.org";
-        identityAgent = "\"~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock\"";
+        HostName = "codeberg.org";
+        IdentityAgent = "\"~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock\"";
       };
-      
+
       "purple_folder" = {
-        hostname = "178.156.160.41";
-        user = "ubuntu";
-        identitiesOnly = true;
+        HostName = "178.156.160.41";
+        User = "ubuntu";
+        IdentitiesOnly = true;
       };
 
       "flourish" = {
-        hostname = "ssh.nyc1.nearlyfreespeech.net";
-        user = "caryme_flourishinplace";
+        HostName = "ssh.nyc1.nearlyfreespeech.net";
+        User = "caryme_flourishinplace";
       };
 
       "fip" = {
-        hostname = "5.161.230.35";
-        user = "cary";
-        identitiesOnly = true;
+        HostName = "5.161.230.35";
+        User = "cary";
+        IdentitiesOnly = true;
       };
 
       "gringotts" = {
-        hostname = "192.168.8.3";
-        user = "cary";
+        HostName = "192.168.8.3";
+        User = "cary";
       };
 
       "firstchurch" = {
-        hostname = "192.185.243.28";
-        user = "seattle1";
+        HostName = "192.185.243.28";
+        User = "seattle1";
       };
 
       "*" = {
-        forwardAgent = false;
-        serverAliveInterval = 60;
-        serverAliveCountMax = 3;
-        addKeysToAgent = "yes";
-        compression = true;
-        hashKnownHosts = true;
+        ForwardAgent = false;
+        ServerAliveInterval = 60;
+        ServerAliveCountMax = 3;
+        AddKeysToAgent = "yes";
+        Compression = true;
+        HashKnownHosts = true;
       };
     };
   };
@@ -412,11 +416,11 @@
     duckdb
 
     # comby is broken in current nixos-unstable; pull it from a pinned nixpkgs commit.
-    (import nixpkgs-comby { inherit (pkgs) system; }).comby
+    (import nixpkgs-comby { inherit system; }).comby
 
-    gws-cli.packages.${pkgs.system}.default
+    gws-cli.packages.${system}.default
 
-    claude-code.packages.${pkgs.system}.default
+    claude-code.packages.${system}.default
 
     (pkgs.callPackage ./pkgs/mdr.nix { })
 

@@ -342,6 +342,9 @@ in
       "firstchurch" = {
         HostName = "192.185.243.28";
         User = "seattle1";
+        ControlMaster = "auto";
+        ControlPath = "~/.ssh/cm-%r@%h:%p";
+        ControlPersist = "10m";
       };
 
       "*" = {

@@ -282,7 +282,6 @@ in
       ${if pkgs.stdenv.isDarwin then ''
         IdentityAgent "~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
         Include ~/.orbstack/ssh/config
-        Include ~/.colima/ssh_config
       '' else ""}
     '';
     settings = {
@@ -337,14 +336,6 @@ in
       "gringotts" = {
         HostName = "192.168.8.3";
         User = "cary";
-      };
-
-      "firstchurch" = {
-        HostName = "192.185.243.28";
-        User = "seattle1";
-        ControlMaster = "auto";
-        ControlPath = "~/.ssh/cm-%r@%h:%p";
-        ControlPersist = "10m";
       };
 
       "*" = {

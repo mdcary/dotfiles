@@ -106,13 +106,25 @@
          :event [:VeryLazy]
          :build "deno task --quiet build:fast"
          :config (fn []
-                   (let [peek (require :peek)]
-                     ;; Under WSL the default `app = "webview"` needs a GUI
-                     ;; display we don't have. Hand the URL to Windows'
-                     ;; default browser via `cmd.exe /c start`. The empty
-                     ;; string after `start` is its window-title arg —
-                     ;; without it, `start` would consume the URL as the title.
-                     (peek.setup {:app [:cmd.exe :/c :start ""]})
+                   (let [peek (require :peek)
+                         ;; Only WSL needs special handling: peek's default
+                         ;; `app = "webview"` wants a GUI display, which WSL
+                         ;; lacks but macOS / desktop Linux have. So on WSL we
+                         ;; hand the URL to Windows' default browser via
+                         ;; `cmd.exe /c start`; everywhere else we keep peek's
+                         ;; default. (This file is shared across machines.)
+                         ;;
+                         ;; The empty string after `start` is its window-title
+                         ;; arg — without it `start` eats the URL as the title.
+                         ;; cmd.exe is given by absolute path rather than bare
+                         ;; name: WSL no longer appends the Windows System32 dir
+                         ;; to PATH (appendWindowsPath), so `cmd.exe` is
+                         ;; otherwise unfound. The /mnt/c automount + this path
+                         ;; are WSL-standard, and this keeps us off dead wslu.
+                         opts (if (= 1 (vim.fn.has :wsl))
+                                  {:app ["/mnt/c/Windows/System32/cmd.exe" :/c :start ""]}
+                                  {})]
+                     (peek.setup opts)
                      (vim.api.nvim_create_user_command :PeekOpen peek.open {})
                      (vim.api.nvim_create_user_command :PeekClose peek.close {})))}
         {1 :neovim/nvim-lspconfig

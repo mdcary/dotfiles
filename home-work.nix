@@ -159,6 +159,7 @@ in
   home.packages = with pkgs; [
     linear-cli
     d2
+    librsvg
     unixodbcDrivers.msodbcsql17
     taws-bin
     stu

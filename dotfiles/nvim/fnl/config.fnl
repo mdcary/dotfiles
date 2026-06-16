@@ -102,6 +102,12 @@
          ;;;@module 'render-markdown'
          ;;;@type render.md.UserConfig
          :opts {}}
+        {1 :iamcco/markdown-preview.nvim
+         :cmd [:MarkdownPreviewToggle :MarkdownPreview :MarkdownPreviewStop]
+         :build "cd app && npm install"
+         :init (fn []
+                 (set vim.g.mkdp_filetypes [:markdown]))
+         :ft [:markdown]}
         {1 :toppair/peek.nvim
          :event [:VeryLazy]
          :build "deno task --quiet build:fast"
@@ -122,7 +128,10 @@
                          ;; otherwise unfound. The /mnt/c automount + this path
                          ;; are WSL-standard, and this keeps us off dead wslu.
                          opts (if (= 1 (vim.fn.has :wsl))
-                                  {:app ["/mnt/c/Windows/System32/cmd.exe" :/c :start ""]}
+                                  {:app [:/mnt/c/Windows/System32/cmd.exe
+                                         :/c
+                                         :start
+                                         ""]}
                                   {})]
                      (peek.setup opts)
                      (vim.api.nvim_create_user_command :PeekOpen peek.open {})

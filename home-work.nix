@@ -164,6 +164,8 @@ in
     taws-bin
     stu
     azure-cli
+    sqlcmd
+    ssm-session-manager-plugin
   ];
 
   home.file = {

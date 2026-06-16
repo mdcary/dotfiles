@@ -116,22 +116,22 @@
                          ;; Only WSL needs special handling: peek's default
                          ;; `app = "webview"` wants a GUI display, which WSL
                          ;; lacks but macOS / desktop Linux have. So on WSL we
-                         ;; hand the URL to Windows' default browser via
-                         ;; `cmd.exe /c start`; everywhere else we keep peek's
+                         ;; point peek straight at the Windows browser and let
+                         ;; it append the URL; everywhere else we keep peek's
                          ;; default. (This file is shared across machines.)
                          ;;
-                         ;; The empty string after `start` is its window-title
-                         ;; arg — without it `start` eats the URL as the title.
-                         ;; cmd.exe is given by absolute path rather than bare
-                         ;; name: WSL no longer appends the Windows System32 dir
-                         ;; to PATH (appendWindowsPath), so `cmd.exe` is
-                         ;; otherwise unfound. The /mnt/c automount + this path
-                         ;; are WSL-standard, and this keeps us off dead wslu.
+                         ;; We hand peek the browser executable directly rather
+                         ;; than routing through `cmd.exe /c start`. That shell
+                         ;; chain kept breaking: bare `cmd.exe` went unfound when
+                         ;; WSL stopped appending System32 to PATH
+                         ;; (appendWindowsPath), and `start` adds quirks of its
+                         ;; own (the empty title arg, UNC-path warnings). $BROWSER
+                         ;; is exported in home-work.nix; fall back to
+                         ;; explorer.exe (opens the default browser) if unset.
+                         browser (or (os.getenv :BROWSER)
+                                     :/mnt/c/Windows/explorer.exe)
                          opts (if (= 1 (vim.fn.has :wsl))
-                                  {:app [:/mnt/c/Windows/System32/cmd.exe
-                                         :/c
-                                         :start
-                                         ""]}
+                                  {:app [browser]}
                                   {})]
                      (peek.setup opts)
                      (vim.api.nvim_create_user_command :PeekOpen peek.open {})

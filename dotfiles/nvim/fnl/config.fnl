@@ -4,13 +4,10 @@
 ;; 1. BASE OPTIONS & KEYMAPS
 ;; ==============================================================================
 (set vim.g.mapleader " ")
-(set vim.g.maplocalleader " ")
+(set vim.g.maplocalleader ",")
 
 ;; --- UI & Display ---
 (set vim.opt.number true)
-
-;; Show line numbers
-(set vim.opt.relativenumber true)
 
 ;; Relative line numbers for easy jumping (e.g., 5j)
 (set vim.opt.termguicolors true)
@@ -38,10 +35,8 @@
 ;; Indent size
 (set vim.opt.tabstop 2)
 
-;; Tab size
-(set vim.opt.smartindent true)
-
 ;; Auto-indent new lines intelligently
+(vim.cmd "filetype plugin indent on")
 
 ;; --- Search ---
 (set vim.opt.ignorecase true)
@@ -56,6 +51,9 @@
 
 ;; --- Quality of Life ---
 (set vim.opt.clipboard :unnamedplus)
+
+;; Paste from system clipboard in Insert mode using Ctrl+v
+(vim.keymap.set :i :<C-v> :<C-r>+)
 
 ;; Sync with system clipboard
 (set vim.opt.updatetime 250)
@@ -97,17 +95,13 @@
                                                                (vim.treesitter.start args.buf))})))}
         ;; Neovim
         ;; LSP: Mason & Nvim-Lspconfig
-        {1 :MeanderingProgrammer/render-markdown.nvim
-         :dependencies [:nvim-treesitter/nvim-treesitter :nvim-mini/mini.nvim]
-         ;;;@module 'render-markdown'
-         ;;;@type render.md.UserConfig
-         :opts {}}
-        {1 :iamcco/markdown-preview.nvim
-         :cmd [:MarkdownPreviewToggle :MarkdownPreview :MarkdownPreviewStop]
-         :build "cd app && npm install"
-         :init (fn []
-                 (set vim.g.mkdp_filetypes [:markdown]))
-         :ft [:markdown]}
+        ;{1 :MeanderingProgrammer/render-markdown.nvim
+        ;:dependencies [:nvim-treesitter/nvim-treesitter :nvim-mini/mini.nvim]
+        ;;;@module 'render-markdown'
+        ;;;@type render.md.UserConfig
+        ;:opts {}}
+        {1 :Olical/conjure :ft [:fennel :clojure]}
+        {1 :junegunn/goyo.vim}
         {1 :toppair/peek.nvim
          :event [:VeryLazy]
          :build "deno task --quiet build:fast"
@@ -228,7 +222,7 @@
          :lazy false
          :opts {:notifier {:enabled true :timeout 3000}
                 ;; Beautiful popup notifications
-                :dashboard {:enabled true}
+                :dashboard {:enabled false}
                 ;; Startup screen with recent files
                 :bigfile {:enabled true}
                 ;; Auto-disables LSP/Treesitter on massive files so Nvim doesn't freeze
@@ -237,7 +231,25 @@
                 :words {:enabled false}
                 ;; Auto-highlights matching variables under your cursor — disabled,
                 ;; the CursorMoved LSP documentHighlight calls caused j/k lag
-                :zen {:enabled true}}
+                :zen {:enabled true
+                      :wo {:number false
+                           :relativenumber false
+                           :fillchars "eob: "
+                           :signcolumn (.. "" :no)}
+                      :opts {:showmode false
+                             :laststatus 0
+                             :cmdheight 0
+                             ;; --- Hides the bottom right ruler ---
+                             :ruler false}
+                      :win {:backdrop {:transparent false :blend 99}}
+                      :on_open (fn []
+                                 (set vim.opt.number false)
+                                 (set vim.opt.ruler false)
+                                 (vim.fn.system "tmux set-option status off"))
+                      :on_close (fn []
+                                  (set vim.opt.number true)
+                                  (set vim.opt.ruler true)
+                                  (vim.fn.system "tmux set-option status on"))}}
          ;; Distraction-free coding mode
          :keys [{1 :<leader>z
                  2 (fn []

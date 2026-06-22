@@ -147,7 +147,7 @@ in
   };
 
   programs.fzf.enable = true;
-  programs.gemini-cli.enable = true;
+  programs.antigravity-cli.enable = true; # Changed from programs.gemini-cli.enable
   programs.zoxide.enable = true;
   programs.eza.enable = true;
   programs.starship.enable = true;

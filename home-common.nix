@@ -231,6 +231,25 @@ in
 
       # Open new window (tab) in the home directory
       bind c new-window -c "~"
+
+      # --- which-key style popup menu (alexwforsythe/tmux-which-key) ---
+      # Loaded here (not via programs.tmux.plugins) on purpose: Home Manager
+      # sources the `plugins` list *before* extraConfig, but this plugin needs
+      # the XDG option set first. Without it the plugin tries to write its
+      # config.yaml into its own read-only nix store dir and fails on every
+      # start. XDG redirects config to ~/.config/tmux/plugins/tmux-which-key/
+      # and the generated init.tmux to ~/.local/share/tmux/plugins/.
+      # Trigger: prefix (C-a) then Space.
+      #
+      # Autobuild is disabled because it re-runs build.py on every start to
+      # regenerate init.tmux — but that file is cp'd from the read-only nix
+      # store (mode 0444), so the write fails, set -e aborts the loader, and
+      # the menu never binds. With autobuild off we just source the already
+      # generated init.tmux (the plugin's bundled default menu). To customize
+      # the menu later we regenerate init.tmux out-of-band rather than at load.
+      set -g @tmux-which-key-xdg-enable 1
+      set -g @tmux-which-key-disable-autobuild 1
+      run-shell ${pkgs.tmuxPlugins.tmux-which-key}/share/tmux-plugins/tmux-which-key/plugin.sh.tmux
     '';
   };
 

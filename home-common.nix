@@ -3,6 +3,8 @@
 let
   # `pkgs.system` is deprecated; use the stdenv platform string.
   system = pkgs.stdenv.hostPlatform.system;
+
+  repoDir = "${config.home.homeDirectory}/.config/home-manager";
 in
 {
   home.username = "cary";
@@ -12,7 +14,10 @@ in
     "$HOME/.cache/.bun/bin"
   ];
   xdg.enable = true;
-  xdg.configFile."nvim".source = ./dotfiles/nvim;
+  # Symlink the nvim config to the live repo dir instead of the read-only nix
+  # store, so edits under dotfiles/nvim take effect without a home-manager rebuild.
+  xdg.configFile."nvim".source = config.lib.file.mkOutOfStoreSymlink "${repoDir}/dotfiles/nvim";
+
   programs.bun.enable = true;
   programs.lazyworktree.enable = true;
   programs.lazysql.enable = true;
@@ -261,6 +266,10 @@ in
   programs.neovim = {
     enable = true;
     defaultEditor = true;
+
+    # Wrap the nvim binary with its args instead of writing init.lua, leaving the
+    # out-of-store config symlink above untouched.
+    sideloadInitLua = true;
     extraPackages = with pkgs; [
       cargo
       gcc

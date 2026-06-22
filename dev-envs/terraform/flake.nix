@@ -18,7 +18,11 @@
       devShells = forEachSystem
         (system:
           let
-            pkgs = nixpkgs.legacyPackages.${system};
+            pkgs = import nixpkgs {
+              inherit system;
+              # checkov pulls in python ecdsa, flagged insecure (CVE-2024-23342)
+              config.permittedInsecurePackages = [ "python3.13-ecdsa-0.19.2" ];
+            };
             terraform = nixpkgs-terraform.packages.${system}."terraform-1.9.4";
           in
           {
@@ -27,6 +31,7 @@
                 terraform
                 terragrunt
                 checkov
+                opentofu
               ];
 
             };

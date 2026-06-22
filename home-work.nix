@@ -165,6 +165,7 @@ in
     stu
     azure-cli
     sqlcmd
+    opentofu
     ssm-session-manager-plugin
   ];
 

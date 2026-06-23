@@ -68,46 +68,47 @@ properties:
         Ensure: Present
 
     - resource: Microsoft.WinGet.DSC/WinGetPackage
+      id: Just
+      directives:
+        description: just command runner
+      settings:
+        Id: Casey.Just
+        Source: winget
+        Ensure: Present
+
+    - resource: Microsoft.WinGet.DSC/WinGetPackage
+      id: D2
+      directives:
+        description: D2 diagram language
+      settings:
+        Id: Terrastruct.D2
+        Source: winget
+        Ensure: Present
+
+    - resource: Microsoft.WinGet.DSC/WinGetPackage
+      id: AWSCLI
+      directives:
+        description: AWS CLI v2
+      settings:
+        Id: Amazon.AWSCLI
+        Source: winget
+        Ensure: Present
+
+    - resource: Microsoft.WinGet.DSC/WinGetPackage
+      id: SessionManagerPlugin
+      directives:
+        description: AWS Session Manager plugin (aws ssm start-session)
+      settings:
+        Id: Amazon.SessionManagerPlugin
+        Source: winget
+        Ensure: Present
+
+    - resource: Microsoft.WinGet.DSC/WinGetPackage
       id: WindowsTerminal
       settings:
         Id: Microsoft.WindowsTerminal
         Source: winget
         Ensure: Present
-
-    - resource: Script
-      id: PrimeWindowsTerminalSettingsJson
-      dependsOn:
-        - WindowsTerminal
-      directives:
-        description: Launch Windows Terminal once (non-elevated) and wait for settings.json to exist
-      settings:
-        GetScript: |
-          @{ Result = "settings.json presence checked in TestScript." }
-        TestScript: |
-          $paths = @(
-            (Join-Path $env:LOCALAPPDATA "Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json"),
-            (Join-Path $env:LOCALAPPDATA "Packages\Microsoft.WindowsTerminalPreview_8wekyb3d8bbwe\LocalState\settings.json")
-          )
-          return [bool]($paths | Where-Object { Test-Path $_ } | Select-Object -First 1)
-        SetScript: |
-          $ErrorActionPreference = "Stop"
-
-          # Start Terminal (best-effort). It may already be running.
-          Start-Process "wt.exe" -WindowStyle Hidden -ErrorAction SilentlyContinue | Out-Null
-
-          $paths = @(
-            (Join-Path $env:LOCALAPPDATA "Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json"),
-            (Join-Path $env:LOCALAPPDATA "Packages\Microsoft.WindowsTerminalPreview_8wekyb3d8bbwe\LocalState\settings.json")
-          )
-
-          $deadline = (Get-Date).AddSeconds(20)
-          while ((Get-Date) -lt $deadline) {
-            $p = $paths | Where-Object { Test-Path $_ } | Select-Object -First 1
-            if ($p) { return }
-            Start-Sleep -Milliseconds 500
-          }
-
-          throw "Windows Terminal settings.json not created yet. Try launching Terminal once manually, then re-run winget configure."
 
     - resource: Microsoft.WinGet.DSC/WinGetPackage
       id: Chrome
@@ -143,78 +144,6 @@ properties:
 
           Install-Module PSReadLine -Scope CurrentUser -Force | Out-Host
           Install-Module PSFzf     -Scope CurrentUser -Force | Out-Host
-
-    - resource: Script
-      id: ConfigurePowerShellProfile
-      dependsOn:
-        - InstallPowerShellFzfIntegration
-        - Ripgrep
-        - fd
-        - fzf
-      directives:
-        description: Configure PowerShell profile for rg/fd/fzf quality-of-life
-      settings:
-        GetScript: |
-          @{ Result = "Profile checked in TestScript." }
-          TestScript: |
-            try {
-              $profilePath = $PROFILE
-              if ([string]::IsNullOrWhiteSpace($profilePath)) {
-                $profilePath = Join-Path $HOME "Documents\PowerShell\Microsoft.PowerShell_profile.ps1"
-              }
-              if (-not (Test-Path -LiteralPath $profilePath)) { return $false }
-
-              $c = Get-Content -LiteralPath $profilePath -Raw -ErrorAction Stop
-              if ($c -match "BEGIN DEV SHELL BASELINE") { return $true }
-              return $false
-            } catch {
-              return $false
-            }
-        SetScript: |
-          $ErrorActionPreference = "Stop"
-
-          $profilePath = $PROFILE
-          if ([string]::IsNullOrWhiteSpace($profilePath)) {
-            $profilePath = Join-Path $HOME "Documents\PowerShell\Microsoft.PowerShell_profile.ps1"
-          }
-
-          $dir = Split-Path -Parent $profilePath
-          New-Item -ItemType Directory -Force -Path $dir | Out-Null
-          if (-not (Test-Path $profilePath)) { New-Item -ItemType File -Force -Path $profilePath | Out-Null }
-
-          $block = @'
-          # BEGIN DEV SHELL BASELINE
-          Import-Module PSReadLine -ErrorAction SilentlyContinue
-          Import-Module PSFzf     -ErrorAction SilentlyContinue
-          Set-PsFzfOption -PSReadlineChordProvider 'Ctrl+t' -PSReadlineChordReverseHistory 'Ctrl+r' | Out-Null
-          Set-Alias rg  rg  -ErrorAction SilentlyContinue
-          Set-Alias fd  fd  -ErrorAction SilentlyContinue
-
-          function fcd {
-            $p = fd --type d --hidden --follow --exclude .git 2>$null | fzf
-            if ($p) { Set-Location $p }
-          }
-
-          function fkill {
-            $line = Get-Process | Sort-Object ProcessName | ForEach-Object { "{0}`t{1}" -f $_.Id,$_.ProcessName } | fzf
-            if ($line) { $pid = ($line -split "`t")[0]; Stop-Process -Id $pid -Force }
-          }
-
-          $env:RIPGREP_CONFIG_PATH = Join-Path $env:USERPROFILE ".ripgreprc"
-          if (-not (Test-Path $env:RIPGREP_CONFIG_PATH)) {
-            @"
-          --hidden
-          --follow
-          --glob=!.git/*
-          "@ | Set-Content -Encoding UTF8 $env:RIPGREP_CONFIG_PATH
-          }
-          # END DEV SHELL BASELINE
-          '@
-
-          $content = Get-Content $profilePath -Raw
-          if ($content -notmatch "BEGIN DEV SHELL BASELINE") {
-            Add-Content -Path $profilePath -Value "`n$block`n" -Encoding UTF8
-          }
 
       #
       # --- VS Code + extensions ---
@@ -352,49 +281,132 @@ properties:
         Ensure: Present
 
     #
-    # --- CapsLock -> Ctrl
+    # --- SQL Server client stack ---
     #
-    - resource: Script
-      id: RemapCapsLockToCtrl_ScancodeMap
+    - resource: Microsoft.WinGet.DSC/WinGetPackage
+      id: MSODBCSQL18
       directives:
-        description: Remap CapsLock to Left Control via Scancode Map (requires reboot)
-        securityContext: elevated
+        description: Microsoft ODBC Driver 18 for SQL Server
       settings:
-        GetScript: |
-          @{ Result = "ScancodeMap checked in TestScript." }
-        TestScript: |
-          $k = "HKLM:\SYSTEM\CurrentControlSet\Control\Keyboard Layout"
-          try {
-            $v = (Get-ItemProperty -Path $k -Name "Scancode Map" -ErrorAction Stop)."Scancode Map"
-          } catch { return $false }
+        Id: Microsoft.msodbcsql.18
+        Source: winget
+        Ensure: Present
 
-          # Expected bytes: map Caps (0x3A) -> LCtrl (0x1D)
-          $expected = [byte[]](
-            0x00,0x00,0x00,0x00, 0x00,0x00,0x00,0x00,
-            0x02,0x00,0x00,0x00,
-            0x1D,0x00,0x3A,0x00,
-            0x00,0x00,0x00,0x00
-          )
+    - resource: Microsoft.WinGet.DSC/WinGetPackage
+      id: MSOLEDBSQL19
+      directives:
+        description: Microsoft OLE DB Driver 19 for SQL Server
+      settings:
+        Id: Microsoft.SQLServer.OLEDBDriver
+        Source: winget
+        Ensure: Present
 
-          if ($v.Length -ne $expected.Length) { return $false }
-          for ($i=0; $i -lt $expected.Length; $i++) {
-            if ($v[$i] -ne $expected[$i]) { return $false }
-          }
-          return $true
-        SetScript: |
-          $ErrorActionPreference = "Stop"
-          $k = "HKLM:\SYSTEM\CurrentControlSet\Control\Keyboard Layout"
-          New-Item -Path $k -Force | Out-Null
+    - resource: Microsoft.WinGet.DSC/WinGetPackage
+      id: Sqlcmd
+      directives:
+        description: sqlcmd command-line tools
+      settings:
+        Id: Microsoft.Sqlcmd
+        Source: winget
+        Ensure: Present
 
-          $bytes = [byte[]](
-            0x00,0x00,0x00,0x00, 0x00,0x00,0x00,0x00,
-            0x02,0x00,0x00,0x00,
-            0x1D,0x00,0x3A,0x00,
-            0x00,0x00,0x00,0x00
-          )
+    - resource: Microsoft.WinGet.DSC/WinGetPackage
+      id: SSMS22
+      directives:
+        description: SQL Server Management Studio 22
+      settings:
+        Id: Microsoft.SQLServerManagementStudio.22
+        Source: winget
+        Ensure: Present
 
-          New-ItemProperty -Path $k -Name "Scancode Map" -PropertyType Binary -Value $bytes -Force | Out-Null
-          Write-Host "CapsLock remapped. Reboot required."
+    #
+    # --- Comms / work apps ---
+    #
+    - resource: Microsoft.WinGet.DSC/WinGetPackage
+      id: Slack
+      settings:
+        Id: SlackTechnologies.Slack
+        Source: winget
+        Ensure: Present
+
+    - resource: Microsoft.WinGet.DSC/WinGetPackage
+      id: Teams
+      settings:
+        Id: Microsoft.Teams
+        Source: winget
+        Ensure: Present
+
+    - resource: Microsoft.WinGet.DSC/WinGetPackage
+      id: Notion
+      settings:
+        Id: Notion.Notion
+        Source: winget
+        Ensure: Present
+
+    #
+    # --- Misc utilities ---
+    #
+    - resource: Microsoft.WinGet.DSC/WinGetPackage
+      id: WinSCP
+      directives:
+        description: WinSCP SFTP/SCP client
+      settings:
+        Id: WinSCP.WinSCP
+        Source: winget
+        Ensure: Present
+
+    - resource: Microsoft.WinGet.DSC/WinGetPackage
+      id: Files
+      directives:
+        description: Files (Explorer replacement)
+      settings:
+        Id: FilesCommunity.Files
+        Source: winget
+        Ensure: Present
+
+    - resource: Microsoft.WinGet.DSC/WinGetPackage
+      id: Handy
+      directives:
+        description: Handy (local speech-to-text dictation)
+      settings:
+        Id: cjpais.Handy
+        Source: winget
+        Ensure: Present
+
+    # Keep Ctrl2Cap uninstalled: an older CapsLock->Ctrl remapper. Removing it
+    # ensures CapsLock keeps its factory behavior (no third-party remap).
+    - resource: Microsoft.WinGet.DSC/WinGetPackage
+      id: Ctrl2Cap
+      directives:
+        description: Keep Ctrl2Cap uninstalled so CapsLock stays at factory behavior
+      settings:
+        Id: Microsoft.Sysinternals.Ctrl2Cap
+        Source: winget
+        Ensure: Absent
+
+    #
+    # --- Alacritty terminal ---
+    # The AHK paste fix below targets alacritty.exe, so install it here.
+    #
+    - resource: Microsoft.WinGet.DSC/WinGetPackage
+      id: Alacritty
+      settings:
+        Id: Alacritty.Alacritty
+        Source: winget
+        Ensure: Present
+
+    #
+    # --- AutoHotkey ---
+    # Installed for ad-hoc scripting. No .ahk scripts are wired up here.
+    #
+    - resource: Microsoft.WinGet.DSC/WinGetPackage
+      id: AutoHotkey
+      directives:
+        description: AutoHotkey v2
+      settings:
+        Id: AutoHotkey.AutoHotkey
+        Source: winget
+        Ensure: Present
 
     #
     # --- Touchpad gestures: 3-finger swipe Back/Forward ---
@@ -719,7 +731,7 @@ properties:
       dependsOn:
         - InstallCaskaydiaCoveNerdFont
         - WindowsTerminal
-        - PrimeWindowsTerminalSettingsJson
+        - FixWindowsTerminalSettingsPermissions
       directives:
         description: Set Windows Terminal default font to CaskaydiaCove NF
       settings:

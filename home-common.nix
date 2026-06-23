@@ -1,4 +1,4 @@
-{ config, pkgs, lib, nixpkgs-comby, claude-code, codex-cli, gws-cli, ... }:
+{ config, pkgs, lib, nixpkgs-comby, claude-code, codex-cli, gws-cli, llm-agents, ... }:
 
 let
   # `pkgs.system` is deprecated; use the stdenv platform string.
@@ -389,6 +389,7 @@ in
     just
     podman
     podman-compose
+    sl
 
     nodejs
 
@@ -447,6 +448,14 @@ in
     (pkgs.callPackage ./pkgs/mdr.nix { })
 
     (pkgs.callPackage ./pkgs/ferrite.nix { })
+
+    # simonw's "executable document" demo tool — a Go binary, pulled prebuilt
+    # from numtide/llm-agents.nix (cache.numtide.com) rather than rebuilt here.
+    llm-agents.packages.${system}.showboat
+
+    # simonw/rodney: Chrome automation CLI. Not in llm-agents.nix, so built
+    # from source here and wrapped to use nixpkgs chromium at runtime.
+    (pkgs.callPackage ./pkgs/rodney.nix { })
   ];
 
   fonts.fontconfig.enable = true;

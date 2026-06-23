@@ -1,6 +1,15 @@
 {
   description = "System and Home Manager configuration of cary";
 
+  # Pull prebuilt llm-agents.nix packages (showboat, etc.) from Numtide's cache
+  # instead of rebuilding from source. Only honored for trusted nix users — run
+  # `echo 'trusted-users = root cary' | sudo tee -a /etc/nix/nix.conf` once and
+  # restart nix-daemon, otherwise the daemon ignores these.
+  nixConfig = {
+    extra-substituters = [ "https://cache.numtide.com" ];
+    extra-trusted-public-keys = [ "niks3.numtide.com-1:DTx8wZduET09hRmMtKdQDxNNthLQETkc/yaX7M4qK0g=" ];
+  };
+
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
     # comby is broken in current nixos-unstable; pin to the last known-good commit.
@@ -8,6 +17,11 @@
     claude-code.url = "github:sadjow/claude-code-nix";
     codex-cli.url = "github:sadjow/codex-cli-nix";
     gws-cli.url = "github:googleworkspace/cli";
+    # Packages showboat (a Go binary) and ~130 other AI tools, built against
+    # its own pinned nixpkgs and served from cache.numtide.com — deliberately
+    # NOT following our nixpkgs, so we get the prebuilt binary instead of a
+    # source rebuild.
+    llm-agents.url = "github:numtide/llm-agents.nix";
     home-manager = {
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -18,7 +32,7 @@
     };
   };
 
-  outputs = { self, nixpkgs, nixpkgs-comby, home-manager, darwin, claude-code, codex-cli, gws-cli, ... }:
+  outputs = { self, nixpkgs, nixpkgs-comby, home-manager, darwin, claude-code, codex-cli, gws-cli, llm-agents, ... }:
     let
       mkTaws = pkgs: pkgs.stdenv.mkDerivation rec {
         pname = "taws";
@@ -43,7 +57,7 @@
         inherit pkgs;
         extraSpecialArgs = {
           taws-bin = mkTaws pkgs;
-          inherit nixpkgs-comby claude-code codex-cli gws-cli;
+          inherit nixpkgs-comby claude-code codex-cli gws-cli llm-agents;
         };
         modules = [ ./home-common.nix ./home-work.nix ];
       };
@@ -54,7 +68,7 @@
       in home-manager.lib.homeManagerConfiguration {
         inherit pkgs;
         extraSpecialArgs = {
-          inherit nixpkgs-comby claude-code codex-cli gws-cli;
+          inherit nixpkgs-comby claude-code codex-cli gws-cli llm-agents;
         };
         modules = [ ./home-common.nix ./home-personal.nix ];
       };
@@ -131,7 +145,7 @@
             home-manager.useGlobalPkgs = true;
             home-manager.useUserPackages = true;
             home-manager.extraSpecialArgs = {
-              inherit nixpkgs-comby claude-code codex-cli gws-cli;
+              inherit nixpkgs-comby claude-code codex-cli gws-cli llm-agents;
             };
             home-manager.users.cary = { imports = [ ./home-common.nix ./home-personal.nix ]; };
           }

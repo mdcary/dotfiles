@@ -680,8 +680,8 @@ properties:
           try {
             $fontsKey = "HKCU:\Software\Microsoft\Windows NT\CurrentVersion\Fonts"
             $names = @(
-              "CaskaydiaCove Nerd Font Complete.ttf",
-              "CaskaydiaCove Nerd Font Mono Complete.ttf"
+              "CaskaydiaCoveNerdFont-Regular.ttf",
+              "CaskaydiaCoveNerdFontMono-Regular.ttf"
             )
 
             foreach ($n in $names) {
@@ -697,13 +697,14 @@ properties:
           $ErrorActionPreference = "Stop"
           $ProgressPreference = "SilentlyContinue"
 
-          # 1) Find latest Nerd Fonts release + CaskaydiaCove.zip
+          # 1) Find latest Nerd Fonts release + CascadiaCode.zip (ships the
+          #    CaskaydiaCove NF patched fonts under the upstream font name)
           $rel = Invoke-RestMethod -Uri "https://api.github.com/repos/ryanoasis/nerd-fonts/releases/latest"
-          $asset = $rel.assets | Where-Object { $_.name -eq "CaskaydiaCove.zip" } | Select-Object -First 1
-          if (-not $asset) { throw "Could not find CaskaydiaCove.zip in latest Nerd Fonts release." }
+          $asset = $rel.assets | Where-Object { $_.name -eq "CascadiaCode.zip" } | Select-Object -First 1
+          if (-not $asset) { throw "Could not find CascadiaCode.zip in latest Nerd Fonts release." }
 
           # 2) Download + extract
-          $zip = Join-Path $env:TEMP "CaskaydiaCove.zip"
+          $zip = Join-Path $env:TEMP "CascadiaCode.zip"
           Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $zip -UseBasicParsing
 
           $extract = Join-Path $env:TEMP ("CaskaydiaCove-" + [guid]::NewGuid().ToString("N"))
@@ -716,58 +717,25 @@ properties:
 
           $fontsKey = "HKCU:\Software\Microsoft\Windows NT\CurrentVersion\Fonts"
 
+          # Nerd Fonts v3 dropped the "Complete" suffix; install the NF and
+          # NF Mono families (skip Propo) to match the WT/Starship config.
           $ttfs = Get-ChildItem -Path $extract -Recurse -Filter *.ttf |
-            Where-Object { $_.Name -match 'Complete' }  # includes NF + NF Mono Complete variants
+            Where-Object { $_.Name -like 'CaskaydiaCoveNerdFont-*' -or $_.Name -like 'CaskaydiaCoveNerdFontMono-*' }
 
           foreach ($f in $ttfs) {
             $target = Join-Path $dest $f.Name
-            Copy-Item -Path $f.FullName -Destination $target -Force
+
+            # Skip the copy if already installed: an active font file is locked
+            # by the process using it, so Copy-Item -Force would fail. Still
+            # (re)assert the registry entry below so it stays idempotent.
+            if (-not (Test-Path $target)) {
+              Copy-Item -Path $f.FullName -Destination $target -Force
+            }
 
             # Register file so it shows up immediately in font pickers
             New-ItemProperty -Path $fontsKey -Name $f.Name -PropertyType String -Value $f.Name -Force | Out-Null
           }
-    - resource: Script
-      id: SetWindowsTerminalFontToCaskaydiaCoveNF
-      dependsOn:
-        - InstallCaskaydiaCoveNerdFont
-        - WindowsTerminal
-        - FixWindowsTerminalSettingsPermissions
-      directives:
-        description: Set Windows Terminal default font to CaskaydiaCove NF
-      settings:
-        GetScript: |
-          @{ Result = "Terminal font checked." }
 
-        TestScript: |
-          $p = Join-Path $env:LOCALAPPDATA "Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json"
-          if (-not (Test-Path $p)) { return $false }
-          $wt = Get-Content $p -Raw | ConvertFrom-Json
-
-          $defaults = $wt.profiles.defaults
-          if (-not $defaults) { return $false }
-
-          return ($defaults.font.face -eq "CaskaydiaCove NF" -or $defaults.fontFace -eq "CaskaydiaCove NF")
-
-        SetScript: |
-          $ErrorActionPreference = "Stop"
-
-          $p = Join-Path $env:LOCALAPPDATA "Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json"
-          if (-not (Test-Path $p)) { throw "Windows Terminal settings.json not found yet." }
-
-          $wt = Get-Content $p -Raw | ConvertFrom-Json
-
-          if (-not $wt.profiles) { $wt | Add-Member -Force NoteProperty profiles ([pscustomobject]@{}) }
-          if (-not $wt.profiles.defaults) { $wt.profiles | Add-Member -Force NoteProperty defaults ([pscustomobject]@{}) }
-
-          # Newer WT uses profiles.defaults.font.face
-          if (-not $wt.profiles.defaults.font) {
-            $wt.profiles.defaults | Add-Member -Force NoteProperty font ([pscustomobject]@{ face = "CaskaydiaCove NF" })
-          } else {
-            $wt.profiles.defaults.font | Add-Member -Force NoteProperty face "CaskaydiaCove NF"
-          }
-
-          ($wt | ConvertTo-Json -Depth 100) | Set-Content -Encoding UTF8 $p
-    #
     # --- Enable WSL Windows features (no Microsoft.Windows.Developer DSC required) ---
     # NOTE: This generally requires a reboot before WSL/Ubuntu install will succeed.
     #
@@ -928,277 +896,3 @@ properties:
           set -e
           podman system connection add podman-machine-default '$uri' --default || true
           "@
-
-    #
-    # --- Windows Terminal settings.json permissions fix ---
-    # Prevents "We could not write to your settings file" by ensuring settings.json isn't read-only and ACLs are sane.
-    # IMPORTANT: Do NOT run elevated; we want the file owned/writable by the interactive user.
-    #
-    - resource: Script
-      id: FixWindowsTerminalSettingsPermissions
-      dependsOn:
-        - WindowsTerminal
-      directives:
-        description: Ensure Windows Terminal settings.json is writable by current user
-      settings:
-        GetScript: |
-          @{ Result = "Settings permissions checked in TestScript." }
-        TestScript: |
-          $p = Join-Path $env:LOCALAPPDATA "Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json"
-          if (-not (Test-Path $p)) { return $false }
-          $item = Get-Item $p
-          if ($item.Attributes -band [IO.FileAttributes]::ReadOnly) { return $false }
-          try {
-            $fs = [System.IO.File]::Open($p,[System.IO.FileMode]::Open,[System.IO.FileAccess]::ReadWrite,[System.IO.FileShare]::Read)
-            $fs.Close()
-            return $true
-          } catch {
-            return $false
-          }
-        SetScript: |
-          $p = Join-Path $env:LOCALAPPDATA "Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json"
-          if (-not (Test-Path $p)) {
-            throw "settings.json not found yet. Launch Windows Terminal once, then rerun winget configure."
-          }
-          attrib -r $p
-          icacls $p /reset | Out-Host
-
-    #
-    # --- Windows Terminal: Catppuccin schemes + themes + defaults ---
-    #
-    - resource: Script
-      id: InstallCatppuccinSchemes
-      dependsOn:
-        - FixWindowsTerminalSettingsPermissions
-      directives:
-        description: Merge Catppuccin schemes + themes into Windows Terminal settings.json (latte/frappe/macchiato/mocha)
-      settings:
-        GetScript: |
-          @{ Result = "Merges Catppuccin schemes/themes if missing." }
-        TestScript: |
-          $settingsPath = Join-Path $env:LOCALAPPDATA "Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json"
-          if (-not (Test-Path $settingsPath)) { return $false }
-
-          $wt = Get-Content $settingsPath -Raw | ConvertFrom-Json
-          $schemeNames = @($wt.schemes | ForEach-Object { $_.name })
-          $themeNames  = @($wt.themes  | ForEach-Object { $_.name })
-
-          $needed = @("Catppuccin Mocha","Catppuccin Macchiato","Catppuccin Frappe","Catppuccin Latte")
-          $missingSchemes = ($needed | Where-Object { $schemeNames -notcontains $_ }).Count
-          $missingThemes  = ($needed | Where-Object { $themeNames  -notcontains $_ }).Count
-
-          return (($missingSchemes -eq 0) -and ($missingThemes -eq 0))
-        SetScript: |
-          $ErrorActionPreference = "Stop"
-
-          $settingsPath = Join-Path $env:LOCALAPPDATA "Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json"
-          if (-not (Test-Path $settingsPath)) {
-            throw "Windows Terminal settings.json not found yet. Launch Windows Terminal once, then re-run winget configure."
-          }
-
-          $base = "https://raw.githubusercontent.com/catppuccin/windows-terminal/refs/heads/main"
-
-          $flavors = @(
-            @{ key = "latte";     name = "Catppuccin Latte" },
-            @{ key = "frappe";    name = "Catppuccin Frappe" },
-            @{ key = "macchiato"; name = "Catppuccin Macchiato" },
-            @{ key = "mocha";     name = "Catppuccin Mocha" }
-          )
-
-          $schemesToAdd = @()
-          $themesToAdd  = @()
-
-          foreach ($f in $flavors) {
-            $schemeUrl = "$base/$($f.key).json"
-            $themeUrl  = "$base/$($f.key)Theme.json"
-
-            $scheme = (Invoke-WebRequest -Uri $schemeUrl -UseBasicParsing).Content | ConvertFrom-Json
-            $theme  = (Invoke-WebRequest -Uri $themeUrl  -UseBasicParsing).Content | ConvertFrom-Json
-
-            $schemesToAdd += $scheme
-            $themesToAdd  += $theme
-          }
-
-          $wt = Get-Content $settingsPath -Raw | ConvertFrom-Json
-
-          if (-not $wt.schemes) { $wt | Add-Member -Force -MemberType NoteProperty -Name schemes -Value @() }
-          if (-not $wt.themes)  { $wt | Add-Member -Force -MemberType NoteProperty -Name themes  -Value @() }
-
-          $existingSchemes = @($wt.schemes)
-          $existingThemes  = @($wt.themes)
-
-          foreach ($s in $schemesToAdd) {
-            if (-not ($existingSchemes | Where-Object { $_.name -eq $s.name })) {
-              $existingSchemes += $s
-            }
-          }
-
-          foreach ($t in $themesToAdd) {
-            if (-not ($existingThemes | Where-Object { $_.name -eq $t.name })) {
-              $existingThemes += $t
-            }
-          }
-
-          $wt.schemes = $existingSchemes
-          $wt.themes  = $existingThemes
-
-          ($wt | ConvertTo-Json -Depth 100) | Set-Content -Encoding UTF8 $settingsPath
-
-    - resource: Script
-      id: SetTerminalCatppuccinMochaDefault
-      dependsOn:
-        - InstallCatppuccinSchemes
-      directives:
-        description: Set Windows Terminal default theme + default profile scheme to Catppuccin Mocha
-      settings:
-        GetScript: |
-          @{ Result = "Terminal default theme/scheme checked in TestScript." }
-        TestScript: |
-          $settingsPath = Join-Path $env:LOCALAPPDATA "Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json"
-          if (-not (Test-Path $settingsPath)) { return $false }
-
-          $wt = Get-Content $settingsPath -Raw | ConvertFrom-Json
-
-          $themeOk = ($wt.theme -eq "Catppuccin Mocha")
-
-          $schemeOk = $false
-          if ($wt.defaultProfile) {
-            $p = $wt.profiles.list | Where-Object { $_.guid -eq $wt.defaultProfile } | Select-Object -First 1
-            if ($p -and $p.colorScheme -eq "Catppuccin Mocha") { $schemeOk = $true }
-          }
-
-          return ($themeOk -and $schemeOk)
-        SetScript: |
-          $ErrorActionPreference = "Stop"
-
-          $settingsPath = Join-Path $env:LOCALAPPDATA "Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json"
-          if (-not (Test-Path $settingsPath)) {
-            throw "Windows Terminal settings.json not found yet. Launch Windows Terminal once, then re-run winget configure."
-          }
-
-          $wt = Get-Content $settingsPath -Raw | ConvertFrom-Json
-
-          $wt | Add-Member -Force -MemberType NoteProperty -Name theme -Value "Catppuccin Mocha"
-
-          if ($wt.defaultProfile -and $wt.profiles -and $wt.profiles.list) {
-            $idx = -1
-            for ($i = 0; $i -lt $wt.profiles.list.Count; $i++) {
-              if ($wt.profiles.list[$i].guid -eq $wt.defaultProfile) { $idx = $i; break }
-            }
-            if ($idx -ge 0) {
-              $wt.profiles.list[$idx] | Add-Member -Force -MemberType NoteProperty -Name colorScheme -Value "Catppuccin Mocha"
-            }
-          }
-
-          ($wt | ConvertTo-Json -Depth 100) | Set-Content -Encoding UTF8 $settingsPath
-
-    - resource: Script
-      id: ConfigureWindowsTerminalQuakeBinding
-      dependsOn:
-        - InstallCatppuccinSchemes
-      directives:
-        description: Bind Ctrl+/ to Windows Terminal quake mode
-      settings:
-        GetScript: |
-          @{ Result = "Quake binding checked in TestScript." }
-        TestScript: |
-          $paths = @(
-            (Join-Path $env:LOCALAPPDATA "Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json"),
-            (Join-Path $env:LOCALAPPDATA "Packages\Microsoft.WindowsTerminalPreview_8wekyb3d8bbwe\LocalState\settings.json")
-          )
-          $settingsPath = $paths | Where-Object { Test-Path $_ } | Select-Object -First 1
-          if (-not $settingsPath) { return $false }
-
-          $wt = Get-Content $settingsPath -Raw | ConvertFrom-Json
-
-          $actions = @()
-          if ($wt.actions) { $actions = @($wt.actions) }
-
-          $hit = $actions | Where-Object {
-            $_.command -eq "quakeMode" -and $_.keys -contains "ctrl+/"
-          } | Select-Object -First 1
-
-          return [bool]$hit
-        SetScript: |
-          $ErrorActionPreference = "Stop"
-
-          $paths = @(
-            (Join-Path $env:LOCALAPPDATA "Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json"),
-            (Join-Path $env:LOCALAPPDATA "Packages\Microsoft.WindowsTerminalPreview_8wekyb3d8bbwe\LocalState\settings.json")
-          )
-          $settingsPath = $paths | Where-Object { Test-Path $_ } | Select-Object -First 1
-          if (-not $settingsPath) { throw "Windows Terminal settings.json not found yet." }
-
-          $wt = Get-Content $settingsPath -Raw | ConvertFrom-Json
-
-          if (-not $wt.actions) { $wt | Add-Member -Force -MemberType NoteProperty -Name actions -Value @() }
-
-          $actions = @($wt.actions)
-
-          $exists = $actions | Where-Object { $_.command -eq "quakeMode" -and ($_.keys -contains "ctrl+/") } | Select-Object -First 1
-          if (-not $exists) {
-            $actions += [pscustomobject]@{
-              command = "quakeMode"
-              keys    = @("ctrl+/")
-            }
-          }
-
-          $wt.actions = $actions
-          ($wt | ConvertTo-Json -Depth 100) | Set-Content -Encoding UTF8 $settingsPath
-
-    - resource: Script
-      id: SetTerminalDefaultProfileUbuntu
-      dependsOn:
-        - InstallUbuntuWSL
-        - SetTerminalCatppuccinMochaDefault
-      directives:
-        description: Set Windows Terminal default profile to Ubuntu (WSL) when installed
-      settings:
-        GetScript: |
-          @{ Result = "Ubuntu default profile checked in TestScript." }
-        TestScript: |
-          $settingsPath = Join-Path $env:LOCALAPPDATA "Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json"
-          if (-not (Test-Path $settingsPath)) { return $false }
-
-          $wt = Get-Content $settingsPath -Raw | ConvertFrom-Json
-          if (-not $wt.profiles -or -not $wt.profiles.list) { return $false }
-
-          $ubuntu = $wt.profiles.list | Where-Object {
-            $_.name -match '^Ubuntu' -or $_.source -eq 'Windows.Terminal.Wsl'
-          } | Select-Object -First 1
-
-          if (-not $ubuntu) { return $false }
-
-          return ($wt.defaultProfile -eq $ubuntu.guid)
-        SetScript: |
-          $ErrorActionPreference = "Stop"
-
-          $settingsPath = Join-Path $env:LOCALAPPDATA "Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json"
-          if (-not (Test-Path $settingsPath)) {
-            throw "Windows Terminal settings.json not found yet. Launch Windows Terminal once, then re-run winget configure."
-          }
-
-          $wt = Get-Content $settingsPath -Raw | ConvertFrom-Json
-          if (-not $wt.profiles -or -not $wt.profiles.list) {
-            throw "Windows Terminal profiles list not found in settings.json."
-          }
-
-          $ubuntu = $wt.profiles.list | Where-Object { $_.source -eq 'Windows.Terminal.Wsl' } | Select-Object -First 1
-          if (-not $ubuntu) {
-            $ubuntu = $wt.profiles.list | Where-Object { $_.name -match '^Ubuntu' } | Select-Object -First 1
-          }
-
-          if (-not $ubuntu) {
-            throw "Ubuntu profile not found in Windows Terminal yet. Open Terminal once after WSL Ubuntu install, then rerun."
-          }
-
-          $wt | Add-Member -Force -MemberType NoteProperty -Name defaultProfile -Value $ubuntu.guid
-
-          for ($i = 0; $i -lt $wt.profiles.list.Count; $i++) {
-            if ($wt.profiles.list[$i].guid -eq $ubuntu.guid) {
-              $wt.profiles.list[$i] | Add-Member -Force -MemberType NoteProperty -Name colorScheme -Value "Catppuccin Mocha"
-              break
-            }
-          }
-
-          ($wt | ConvertTo-Json -Depth 100) | Set-Content -Encoding UTF8 $settingsPath 

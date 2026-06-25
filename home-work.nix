@@ -167,6 +167,9 @@ in
     sqlcmd
     opentofu
     ssm-session-manager-plugin
+
+    dotnet-sdk_10
+    csharp-ls
   ];
 
   home.file = {

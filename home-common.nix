@@ -438,6 +438,7 @@ in
     pkgs.nerd-fonts.fira-code
 
     duckdb
+    sqlite
 
     # comby is broken in current nixos-unstable; pull it from a pinned nixpkgs commit.
     (import nixpkgs-comby { inherit system; }).comby

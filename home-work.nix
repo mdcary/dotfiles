@@ -71,7 +71,8 @@ in
       "profile logs"      = mkProfile "logs" "616967731364" "AWSAdministratorAccess";
       "profile audit"      = mkProfile "audit" "718557712346" "AWSAdministratorAccess";
       "profile management"    = mkProfile "management" "637217033209" "AWSAdministratorAccess";
-      "profile omni"    = mkProfile "omni" "277207922039" "AWSAdministratorAccess";
+      "profile omnipilot"    = mkProfile "omnipilot" "277207922039" "AWSAdministratorAccess";
+      "profile omni"    = mkProfile "omni" "341796273866" "AWSAdministratorAccess";
 
       # Special case for Bedrock (different role)
       "profile bedrock"    = mkProfile "bedrock" "367268567544" "llm-tool-access";

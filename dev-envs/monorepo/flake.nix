@@ -21,6 +21,7 @@
           openssl
           semgrep
           dotnet-sdk_10
+          qemu
 
           # 1. ADD YOUR DRIVERS HERE
           unixodbc

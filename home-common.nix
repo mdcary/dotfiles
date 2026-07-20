@@ -390,6 +390,7 @@ in
     podman
     podman-compose
     sl
+    cloudflared
 
     nodejs
 
@@ -445,8 +446,6 @@ in
 
     claude-code.packages.${system}.default
 
-    (pkgs.callPackage ./pkgs/mdr.nix { })
-
     (pkgs.callPackage ./pkgs/ferrite.nix { })
 
     # simonw's "executable document" demo tool — a Go binary, pulled prebuilt
@@ -470,6 +469,26 @@ in
           }
         ]
       }
+      '';
+    };
+
+    # netavark 2.0's only real firewall driver is nftables, and its ruleset
+    # uses an inet-family `fib` expression that the Microsoft WSL2 kernel can
+    # never satisfy (CONFIG_NFT_FIB_IPV6 unset -> nft_fib_inet.ko is not
+    # built), so every bridge-network container fails with
+    # "nft did not return successfully while applying ruleset".
+    # The iptables driver was removed in netavark 2.0, leaving "none".
+    # That is safe for rootless podman on this box: published ports are
+    # forwarded by rootlessport, egress NAT is done by pasta, and
+    # container<->container traffic rides the bridge — none of them need
+    # netavark's rules. Trade-off: no inter-network isolation between podman
+    # networks, and rootful podman would lose egress NAT (we run rootless only).
+    # force: this file replaced a hand-written copy of the same content.
+    ".config/containers/containers.conf" = lib.mkIf pkgs.stdenv.isLinux {
+      force = true;
+      text = ''
+        [network]
+        firewall_driver = "none"
       '';
     };
   };

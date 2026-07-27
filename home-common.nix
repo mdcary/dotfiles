@@ -155,7 +155,7 @@ in
   programs.tmux = {
     enable = true;
     clock24 = true;
-    terminal = "screen-256color";
+    terminal = "tmux-256color";
     plugins = with pkgs.tmuxPlugins; [
       sensible
       yank
@@ -164,6 +164,17 @@ in
       catppuccin
     ];
     extraConfig = ''
+      # --- Truecolor ---
+      # Matched against the *client's* TERM (xterm-256color under Windows
+      # Terminal), hence the `*` glob rather than a screen*/tmux* pattern.
+      # Without this tmux only gains RGB when the attaching client happens to
+      # export COLORTERM=truecolor, and otherwise quantizes 24-bit colours to
+      # the xterm-256 palette — nvim's catppuccin-mocha #1E1E2E background
+      # collapses to colour 235 (#262626) and reads as black against the
+      # terminal. Takes effect at client attach, so `tmux kill-server` after a
+      # rebuild.
+      set -as terminal-features ",*:RGB"
+
       # --- Prefix Setup ---
       unbind C-b
       set -g prefix C-a

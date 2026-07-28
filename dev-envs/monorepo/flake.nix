@@ -31,6 +31,13 @@
         ];
 
         shellHook = ''
+          # Nix's python setup hook exports a PYTHONPATH of python3.13 site-packages.
+          # It outranks a venv's own site-packages, so any uv venv/tool on another
+          # python (e.g. llm on 3.14) imports nix's pydantic and then fails loading
+          # its 3.13-only _pydantic_core .so. Nothing here needs it -- the nix
+          # wrappers (semgrep etc.) carry their own paths -- so drop it.
+          unset PYTHONPATH
+
           export LD_LIBRARY_PATH="${pkgs.lib.makeLibraryPath [ pkgs.unixodbc pkgs.stdenv.cc.cc.lib ]}:$LD_LIBRARY_PATH"
           export UV_PROJECT_ENVIRONMENT=".venv"
 

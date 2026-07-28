@@ -18,6 +18,20 @@ in
   # store, so edits under dotfiles/nvim take effect without a home-manager rebuild.
   xdg.configFile."nvim".source = config.lib.file.mkOutOfStoreSymlink "${repoDir}/dotfiles/nvim";
 
+  # reMarkable preset for pandoc: `pandoc -d remarkable notes.md -o notes.pdf`
+  # renders markdown (mermaid fences included) at the tablet's native 4:3 page.
+  # `-d NAME` / `--template NAME` resolve out of pandoc's user *data* dir, which
+  # is ~/.local/share/pandoc — not ~/.config/pandoc. Out-of-store symlinks like
+  # nvim's above, so the template stays tweakable without a rebuild.
+  xdg.dataFile = {
+    "pandoc/templates/remarkable.typst".source =
+      config.lib.file.mkOutOfStoreSymlink "${repoDir}/dotfiles/pandoc/remarkable.typst";
+    "pandoc/defaults/remarkable.yaml".source =
+      config.lib.file.mkOutOfStoreSymlink "${repoDir}/dotfiles/pandoc/remarkable.yaml";
+    "pandoc/filters/mermaid.lua".source =
+      config.lib.file.mkOutOfStoreSymlink "${repoDir}/dotfiles/pandoc/mermaid.lua";
+  };
+
   programs.bun.enable = true;
   programs.lazyworktree.enable = true;
   programs.lazysql.enable = true;
@@ -429,6 +443,9 @@ in
     poppler-utils
     qpdf
     typst
+    # Renders the mermaid fences in the pandoc reMarkable preset. Ships its own
+    # wrapped chromium, so the filter's chromium probe stays dormant.
+    mermaid-cli
 
     # Network & sync
     rclone

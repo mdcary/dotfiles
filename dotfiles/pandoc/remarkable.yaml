@@ -1,0 +1,31 @@
+# pandoc -d remarkable notes.md -o notes.pdf
+#
+# reMarkable Paper Pure preset: device-native 4:3 page, monochrome styling,
+# mermaid fences rendered to images. Overrides the global ~/.config/pandoc
+# defaults (which target xelatex/letter), so this is self-contained.
+
+from: markdown+smart+task_lists+pipe_tables+footnotes+fenced_divs
+to: pdf
+pdf-engine: typst
+template: remarkable
+
+# Typst resolves absolute paths against its --root; widen it so the filter can
+# hand back cached diagram PNGs from ~/.cache regardless of where pandoc runs.
+pdf-engine-opts:
+  - --root=/
+
+filters:
+  - mermaid.lua
+
+# Typst emits PDF bookmarks for headings — that's the tablet's TOC panel.
+# Add `--toc` on the command line for a printed contents page as well.
+toc-depth: 3
+
+variables:
+  mainfont: Inter
+  fontsize: 10.5pt
+
+# The global defaults set LaTeX-only variables; blank them so nothing leaks in.
+  geometry: []
+  colorlinks: false
+  numbersections: false

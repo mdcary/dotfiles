@@ -124,6 +124,36 @@ in
   programs.zsh.initContent = ''
     export BROWSER='/mnt/c/Program Files/Google/Chrome/Application/chrome.exe'
     export WINHOME='/mnt/c/Users/CaryLee'
+
+    # Windows Terminal drops dragged files as a bracketed paste containing the raw
+    # Windows path (e.g. C:\Users\...); it has no notion of WSL, so it never
+    # translates that to a /mnt/c/... path itself. Intercept the paste widget and
+    # run each Windows-looking token through the native `wslpath` (not wslu).
+    _wsl_bracketed_paste() {
+      local pasted
+      zle .bracketed-paste pasted
+      if [[ $pasted == *':\'* || $pasted == *'\\'* ]]; then
+        local -a tokens result
+        tokens=(''${(z)pasted})
+        local tok stripped converted
+        for tok in $tokens; do
+          stripped=$tok
+          if [[ $stripped == \"*\" && $stripped == *\" ]]; then
+            stripped=''${stripped:1:-1}
+          elif [[ $stripped == \'*\' && $stripped == *\' ]]; then
+            stripped=''${stripped:1:-1}
+          fi
+          if [[ $stripped == [A-Za-z]:'\'* || $stripped == '\\'[^\\]* ]]; then
+            converted=$(wslpath -u -- "$stripped" 2>/dev/null) && stripped=$converted
+          fi
+          result+=(''${(q)stripped})
+        done
+        pasted="''${(j: :)result}"
+      fi
+      LBUFFER+=$pasted
+    }
+    zle -N bracketed-paste _wsl_bracketed_paste
+
     mktree() {
       local repo=$1
       local branch_id=$2
@@ -158,6 +188,7 @@ in
   '';
 
   home.packages = with pkgs; [
+    wsl-open
     linear-cli
     d2
     librsvg

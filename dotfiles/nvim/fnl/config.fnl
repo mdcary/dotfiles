@@ -325,6 +325,32 @@
                        {1 :<leader>w :group :Workspace :icon " "}
                        {1 :<leader>g :group :Git :icon " "}
                        {1 :<leader>n :group :Notifications :icon " "}]}}
+        {1 :obsidian-nvim/obsidian.nvim
+         :version "*"
+         ;;@module 'obsidian'
+         ;;@type obsidian.config
+         :init (fn []
+                 ;; auto set conceallevel=2 when a markdown file opens
+                 (vim.api.nvim_create_autocmd [:FileType]
+                                              {:pattern [:markdown]
+                                               :callback (fn []
+                                                           (set vim.opt_local.conceallevel
+                                                                2)
+                                                           (set vim.opt_local.concealcursor
+                                                                :nc))}))
+         :opts {:legacy_commands false
+                :note_id_func (fn [title]
+                                ;; By default, obsidian.nvim generates "16893949-Zettelkasten" IDs.
+                                ;; This function overrides that to use clean, slugified filenames 
+                                ;; (e.g., "Architecture Diagram" -> "architecture-diagram").
+                                (if title
+                                    (-> title
+                                        (: :lower)
+                                        (: :gsub "[^%w_ -]" "") ; strip bad characters
+                                        (: :gsub "%s+" "-"))
+                                    ; replace spaces with hyphens
+                                    (tostring (os.time))))
+                :workspaces [{:name :public :path "~/vaults/public"}]}}
         ;; FORMATTING: conform.nvim
         {1 :stevearc/conform.nvim
          :opts {:formatters_by_ft {:lua [:stylua]

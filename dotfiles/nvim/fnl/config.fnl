@@ -350,7 +350,9 @@
                                         (: :gsub "%s+" "-"))
                                     ; replace spaces with hyphens
                                     (tostring (os.time))))
-                :workspaces [{:name :public :path "~/vaults/public"}]}}
+                :workspaces [{:name :public :path "~/vaults/public"}
+                             {:name :constellation
+                              :path "~/vaults/constellation"}]}}
         ;; FORMATTING: conform.nvim
         {1 :stevearc/conform.nvim
          :opts {:formatters_by_ft {:lua [:stylua]

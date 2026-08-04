@@ -187,8 +187,43 @@ in
     }
   '';
 
+  # GUI apps under WSLg (Obsidian, etc.) open external links by shelling out to
+  # xdg-open, which nothing else here pulls in. Install it, then point the URL
+  # schemes at wsl-open so the link is handed to Windows via `powershell.exe
+  # Start` and lands in the real browser instead of failing silently.
+  xdg.desktopEntries.wsl-open = {
+    name = "wsl-open";
+    comment = "Open URLs with their default Windows application";
+    # Absolute store path, not a bare `wsl-open` -- an app launched from the
+    # Windows Start menu doesn't inherit the interactive shell's PATH.
+    exec = "${pkgs.wsl-open}/bin/wsl-open %U";
+    terminal = false;
+    # A router, not something to show in an app launcher.
+    noDisplay = true;
+    type = "Application";
+    mimeType = [
+      "x-scheme-handler/http"
+      "x-scheme-handler/https"
+      "x-scheme-handler/mailto"
+    ];
+  };
+
+  xdg.mimeApps = {
+    enable = true;
+    defaultApplications = {
+      "x-scheme-handler/http" = "wsl-open.desktop";
+      "x-scheme-handler/https" = "wsl-open.desktop";
+      "x-scheme-handler/mailto" = "wsl-open.desktop";
+    };
+  };
+
   home.packages = with pkgs; [
     wsl-open
+    xdg-utils
+    # Unfree; allowUnfree is already set for this config in flake.nix. Runs
+    # under WSLg -- the vaults it opens are the same ~/vaults/{public,constellation}
+    # that obsidian.nvim uses.
+    obsidian
     linear-cli
     d2
     librsvg

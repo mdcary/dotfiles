@@ -19,6 +19,9 @@ pdf-engine-opts:
 
 filters:
   - mermaid.lua
+  # Draft specs carry unfilled `[LINK]()` placeholders; Typst errors out on an
+  # empty `#link("")`, so unwrap those back to plain text instead of failing.
+  - drop-empty-links.lua
 
 # Typst emits PDF bookmarks for headings — that's the tablet's TOC panel.
 # Add `--toc` on the command line for a printed contents page as well.

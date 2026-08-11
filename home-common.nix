@@ -35,6 +35,8 @@ in
       config.lib.file.mkOutOfStoreSymlink "${repoDir}/dotfiles/pandoc/mermaid.lua";
     "pandoc/filters/figure-appendix.lua".source =
       config.lib.file.mkOutOfStoreSymlink "${repoDir}/dotfiles/pandoc/figure-appendix.lua";
+    "pandoc/filters/drop-empty-links.lua".source =
+      config.lib.file.mkOutOfStoreSymlink "${repoDir}/dotfiles/pandoc/drop-empty-links.lua";
   };
 
   programs.bun.enable = true;
@@ -165,7 +167,13 @@ in
     '';
   };
 
-  programs.fzf.enable = true;
+  programs.fzf = {
+    enable = true;
+    # Atuin owns Ctrl-R. Its zsh integration is sourced after fzf's, so without
+    # this both bind the key and the winner is load-order trivia. Blanking the
+    # command drops fzf's history widget only — Ctrl-T and Alt-C are untouched.
+    historyWidget.command = "";
+  };
   programs.antigravity-cli.enable = true; # Changed from programs.gemini-cli.enable
   programs.zoxide.enable = true;
   programs.eza.enable = true;

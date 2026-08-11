@@ -28,8 +28,13 @@ in
       config.lib.file.mkOutOfStoreSymlink "${repoDir}/dotfiles/pandoc/remarkable.typst";
     "pandoc/defaults/remarkable.yaml".source =
       config.lib.file.mkOutOfStoreSymlink "${repoDir}/dotfiles/pandoc/remarkable.yaml";
+    # Layered on top for long-form reading: `-d remarkable -d remarkable-article`.
+    "pandoc/defaults/remarkable-article.yaml".source =
+      config.lib.file.mkOutOfStoreSymlink "${repoDir}/dotfiles/pandoc/remarkable-article.yaml";
     "pandoc/filters/mermaid.lua".source =
       config.lib.file.mkOutOfStoreSymlink "${repoDir}/dotfiles/pandoc/mermaid.lua";
+    "pandoc/filters/figure-appendix.lua".source =
+      config.lib.file.mkOutOfStoreSymlink "${repoDir}/dotfiles/pandoc/figure-appendix.lua";
   };
 
   programs.bun.enable = true;

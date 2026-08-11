@@ -4,7 +4,10 @@
 # mermaid fences rendered to images. Overrides the global ~/.config/pandoc
 # defaults (which target xelatex/letter), so this is self-contained.
 
-from: markdown+smart+task_lists+pipe_tables+footnotes+fenced_divs
+# `-citations`: nothing here ever carries a bibliography, and scraped prose is
+# full of `@handle` mentions that pandoc would otherwise read as citation keys —
+# which fails the build outright ("the document does not contain a bibliography").
+from: markdown+smart+task_lists+pipe_tables+footnotes+fenced_divs-citations
 to: pdf
 pdf-engine: typst
 template: remarkable

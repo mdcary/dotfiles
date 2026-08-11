@@ -1,6 +1,7 @@
 // remarkable.typst — pandoc Typst template for the reMarkable Paper Pure.
 //
-//   pandoc -d remarkable notes.md -o notes.pdf
+//   pandoc -d remarkable notes.md -o notes.pdf              # compact
+//   pandoc -d remarkable -d remarkable-article a.md -o a.pdf # reading/annotation
 //
 // Page is the device's native 4:3 (157×209mm) so the PDF fills the screen with
 // no letterboxing. Monochrome-first: hierarchy comes from weight / rules / fill,
@@ -47,6 +48,150 @@
 #let callout(body) = block(fill: luma(244), radius: 3pt, inset: 7pt, width: 100%,
   text(size: 8.5pt, fill: luma(60), body))
 
+// ── in-PDF navigation (the reMarkable makes these tappable) ──
+
+// A zero-size jump target. Link to it with `rm-jump("name")[label]`.
+#let rm-anchor(name) = [#box(width: 0pt, height: 0pt)#label(name)]
+#let rm-jump(name, body) = link(label(name), body)
+
+// A hidden heading so a section shows up in the device's bookmarks panel.
+#let bm(level, title) = place(top + left, dx: 0pt, dy: 0pt,
+  hide(heading(level: level, outlined: true, bookmarked: true, title)))
+
+// Contents hub for a bundle of documents stitched into one PDF. Tighter than a
+// markdown list on purpose — the point of a hub is seeing everything at once,
+// so it should fit on one page. `groups` is an array of
+// `(label: "…", items: ((<anchor>, "Title"), …))`.
+#let rm-contents(groups) = {
+  v(4pt)
+  for group in groups {
+    block(above: 5pt, below: 2pt, text(size: 6.5pt, weight: "bold", tracking: 1.2pt,
+      fill: faint, upper(group.label)))
+    for item in group.items {
+      block(above: 0pt, below: 0pt, link(item.at(0), grid(
+        columns: (1fr, auto), align: (left + bottom, right + bottom), column-gutter: 5pt,
+        {
+          text(size: 9.5pt, item.at(1))
+          box(width: 1fr, repeat(text(fill: hair)[.]), inset: (x: 4pt))
+        },
+        context text(size: 7.5pt, fill: subtle)[#counter(page).at(item.at(0)).first()],
+      )))
+      v(3.4pt)
+    }
+  }
+}
+
+// Hub-and-neighbours bar for a bundle of documents stitched into one PDF: home
+// on the left, prev/next on the right. Each argument is a (anchor, label) pair
+// or none. Sits under a section heading; deliberately quiet so it reads as
+// furniture rather than content.
+#let rm-navbar(home: none, prev: none, next: none) = block(width: 100%, {
+  set text(size: 7pt, weight: "bold", tracking: 0.9pt, fill: subtle)
+  // Targets arrive as real labels (`<anchor>`), not names — pandoc already
+  // emits `<id>` for every `{#id}` heading, so link() takes them directly.
+  let cell(target, prefix, suffix) = if target == none { [] } else {
+    link(target.at(0), upper(prefix + target.at(1) + suffix))
+  }
+  v(1pt)
+  grid(columns: (auto, 1fr, auto), align: (left, center, right),
+    cell(home, "⌂ ", ""),
+    [],
+    {
+      cell(prev, "‹ ", "")
+      if prev != none and next != none { h(9pt) }
+      cell(next, "", " ›")
+    })
+  v(2pt)
+  line(length: 100%, stroke: 0.4pt + hair)
+})
+
+// ── figure plates: inline thumbnail ⇄ full-page appendix ──
+//
+// Diagrams in an article are the thing you most want to *look* at and the thing
+// that suffers most from a 132mm column. So the body keeps a legible thumbnail
+// that is a tappable link, and the real thing gets a whole page in an appendix,
+// turned sideways when that makes it bigger. Driven by figure-appendix.lua,
+// which numbers the figures and measures their aspect ratio.
+
+// Reading faces are drawn for words, not for interface arrows, and Literata in
+// particular has ↩ only as a *color emoji* — which is the one thing that must
+// never reach an e-ink page. Fall through to Inter, then DejaVu, for anything
+// the body face doesn't cover.
+#let rm-fallback = ("Inter", "DejaVu Sans")
+
+// Usable area of an appendix plate page: the 157×209mm page less the plate
+// margins below, less a little slack so a two-line caption has room.
+#let rm-plate-w = 139mm     // 157 − 2×9mm
+#let rm-plate-h = 176mm     // 209 − 9mm − 14mm, less 5mm slack top and bottom
+
+#let rm-thumb(n, path, ratio, width: 62%) = block(breakable: false, width: 100%, {
+  v(3pt)
+  rm-anchor("rmfig-src-" + str(n))
+  // A wide figure gets the whole column; a squarer one is held to `width` so it
+  // doesn't eat half the page before you've reached the appendix.
+  align(center, rm-jump("rmfig-" + str(n), block(width: if ratio > 2.2 { 100% } else { width }, {
+    box(stroke: 0.4pt + hair, inset: 3pt, image(path, width: 100%))
+    v(2.5pt)
+    text(size: 6.5pt, weight: "bold", tracking: 1pt, fill: subtle,
+         upper[Figure #n — full size in appendix ↗])
+  })))
+  v(3pt)
+})
+
+// The appendix opener: a tappable row per figure, so the appendix has a hub you
+// can reach from the bookmarks panel and jump onward from.
+#let rm-plate-index(entries) = {
+  v(5pt)
+  for entry in entries {
+    block(above: 0pt, below: 0pt, rm-jump("rmfig-" + str(entry.n), grid(
+      columns: (auto, 1fr, auto), align: (left + bottom, left + bottom, right + bottom),
+      column-gutter: 6pt,
+      text(size: 7.5pt, weight: "bold", tracking: 1pt, fill: subtle, upper[Fig #entry.n]),
+      {
+        // No caption in the source? Fall back to the section it appeared under,
+        // which is more use for finding your way back than "untitled".
+        if entry.caption != none { text(size: 9.5pt, entry.caption) } else if entry.section != none {
+          text(size: 9.5pt, fill: subtle, style: "italic", entry.section)
+        } else { text(size: 9.5pt, fill: subtle)[—] }
+        box(width: 1fr, repeat(text(fill: hair)[.]), inset: (x: 4pt))
+      },
+      context text(size: 7.5pt, fill: subtle)[p.~#counter(page).at(label("rmfig-" + str(entry.n))).first()],
+    )))
+    v(3.4pt)
+  }
+}
+
+// One figure, one page, as large as the page can make it. A landscape figure is
+// rotated when the turned fit beats the upright one — worth ~1.25× on anything
+// wider than about 4:3, and the reMarkable is comfortable to hold sideways.
+#let rm-plate(n, path, ratio, caption: none) = page(
+  margin: (top: 9mm, bottom: 14mm, left: 9mm, right: 9mm),
+  background: none,
+  header: none,
+  // Reset: the body pages push the footer down past the notes band, and a plate
+  // page has no band.
+  footer-descent: 3mm,
+  footer: {
+    set text(size: 7pt, fill: subtle)
+    grid(columns: (1fr, auto, 1fr), align: (left + horizon, center + horizon, right + horizon),
+      if caption != none { text(style: "italic", caption) } else { [] },
+      text(weight: "bold", tracking: 1pt,
+        rm-jump("rmfig-src-" + str(n), upper[↩ Back to Figure #n])),
+      [])
+  },
+)[
+  #rm-anchor("rmfig-" + str(n))
+  #let upright = calc.min(rm-plate-w, rm-plate-h * ratio)
+  #let turned  = calc.min(rm-plate-h, rm-plate-w * ratio)
+  // Only turn it if turning actually buys something: having to rotate the
+  // tablet is a real cost, and anything under ~15% isn't worth paying it.
+  #align(center + horizon, if turned > upright * 1.15 {
+    rotate(90deg, reflow: true, image(path, width: turned))
+  } else {
+    image(path, width: upright)
+  })
+]
+
 // ── pandoc plumbing ──
 
 #show terms: it => {
@@ -74,7 +219,13 @@
   lang: "en",
   region: "US",
   font: ("Inter",),
+  headingfont: none,
+  monofont: ("FiraCode Nerd Font",),
   fontsize: 10.5pt,
+  leading: 0.62em,
+  par-spacing: 0.85em,
+  notes-band: 0mm,
+  notes-gap: 8.5mm,
   sectionnumbering: none,
   pagenumbering: "1",
   footer-note: "",
@@ -82,10 +233,36 @@
 ) = {
   set document(title: title, author: (), keywords: keywords)
 
+  let headings = if headingfont == none { font } else { headingfont }
+
+  // `notes-band` reserves a ruled writing zone across the foot of every page.
+  // It is bottom *margin*, not body, so text can never run into it; the rules
+  // are drawn on the page background at an absolute offset, which is far more
+  // predictable than trying to grow the footer.
+  let mleft   = margin.at("left", default: 13mm)
+  let mright  = margin.at("right", default: 12mm)
+  let foot    = margin.at("bottom", default: 11mm)
+
   set page(
     width: 157mm, height: 209mm,      // device-native 4:3
-    margin: margin,
+    margin: (
+      top: margin.at("top", default: 12mm),
+      bottom: foot + notes-band,
+      left: mleft, right: mright,
+    ),
     columns: cols,
+    background: if notes-band > 0mm {
+      place(bottom + left, dx: mleft, dy: -foot,
+        block(width: 100% - mleft - mright, height: notes-band, {
+          place(top + left, line(length: 100%, stroke: 0.7pt + hair))
+          for i in range(1, int(notes-band / notes-gap) + 1) {
+            place(top + left, dy: notes-gap * i, line(length: 100%, stroke: 0.35pt + hair))
+          }
+        }))
+    },
+    // Push the running foot clear of the notes band — Typst measures the
+    // descent from the bottom of the body, which is the band's *top* edge.
+    footer-descent: notes-band + 3mm,
     footer: context {
       set text(size: 7pt, fill: faint)
       grid(columns: (1fr, auto), align: (left, right),
@@ -94,17 +271,22 @@
     },
   )
 
-  set text(lang: lang, region: region, font: font, size: fontsize, fill: ink)
-  set par(leading: 0.62em, justify: false, spacing: 0.85em)
+  set text(lang: lang, region: region, font: font + rm-fallback, size: fontsize, fill: ink)
+  set par(leading: leading, justify: false, spacing: par-spacing)
   set heading(numbering: sectionnumbering)
 
+  show heading: set text(font: headings + rm-fallback)
   show heading.where(level: 1): it => { v(5pt); block(text(size: 15pt, weight: "bold", fill: strong-ink, it.body)); v(2pt) }
   show heading.where(level: 2): it => { v(4pt); block(text(size: 11.5pt, weight: "bold", fill: strong-ink, it.body)); v(1pt) }
   show heading.where(level: 3): it => { v(3pt); block(text(size: 9pt, weight: "bold", tracking: 1pt, fill: subtle, upper(it.body))) }
   show heading.where(level: 4): it => { block(text(size: 10pt, weight: "bold", style: "italic", fill: subtle, it.body)) }
 
-  // Links are underlined, never colored — color is invisible on e-ink.
-  show link: it => underline(offset: 1.5pt, stroke: 0.4pt + subtle, it)
+  // External links are underlined (color is invisible on e-ink). Internal jumps
+  // are not — they wrap whole blocks (figure thumbnails, nav bars) where an
+  // underline would just be a stray rule; they carry ↗ / ↩ glyphs instead.
+  show link: it => if type(it.dest) == label { it } else {
+    underline(offset: 1.5pt, stroke: 0.4pt + subtle, it)
+  }
 
   // Inline code + fenced blocks.
   show raw.where(block: false): it => box(
@@ -112,7 +294,7 @@
   show raw.where(block: true): it => block(
     fill: luma(245), inset: 7pt, radius: 3pt, width: 100%, breakable: true, it)
   set raw(theme: none)
-  show raw: set text(font: "FiraCode Nerd Font", size: 8.5pt)
+  show raw: set text(font: monofont, size: fontsize * 0.81)
 
   show quote.where(block: true): it => block(
     inset: (left: 9pt), stroke: (left: 1.5pt + hair),
@@ -134,14 +316,14 @@
   show "☒": box(width: 9.5pt, height: 9.5pt, stroke: 0.9pt + luma(40), radius: 1.5pt,
                 align(center + horizon, text(size: 8pt, weight: "bold", fill: luma(40))[✓]))
 
-  set list(indent: 4pt, spacing: 0.7em)
-  set enum(indent: 4pt, spacing: 0.7em)
+  set list(indent: 4pt, spacing: par-spacing)
+  set enum(indent: 4pt, spacing: par-spacing)
 
   set image(width: 100%, fit: "contain")
 
   if title != none {
-    text(size: 19pt, weight: "bold", fill: strong-ink, title)
-    if subtitle != none { v(1pt); text(size: 10pt, fill: subtle, subtitle) }
+    text(font: headings + rm-fallback, size: 19pt, weight: "bold", fill: strong-ink, title)
+    if subtitle != none { v(1pt); text(font: headings + rm-fallback, size: 10pt, fill: subtle, subtitle) }
     if date != none { v(1pt); text(size: 8.5pt, fill: faint, date) }
     v(6pt)
   }
@@ -191,8 +373,26 @@ $endif$
 $if(mainfont)$
   font: ("$mainfont$",),
 $endif$
+$if(headingfont)$
+  headingfont: ("$headingfont$",),
+$endif$
+$if(monofont)$
+  monofont: ("$monofont$",),
+$endif$
 $if(fontsize)$
   fontsize: $fontsize$,
+$endif$
+$if(leading)$
+  leading: $leading$,
+$endif$
+$if(par-spacing)$
+  par-spacing: $par-spacing$,
+$endif$
+$if(notes-band)$
+  notes-band: $notes-band$,
+$endif$
+$if(notes-gap)$
+  notes-gap: $notes-gap$,
 $endif$
 $if(section-numbering)$
   sectionnumbering: "$section-numbering$",

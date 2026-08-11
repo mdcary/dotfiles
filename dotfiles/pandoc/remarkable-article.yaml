@@ -1,0 +1,49 @@
+# pandoc -d remarkable -d remarkable-article article.md -o article.pdf
+#
+# Reading-and-annotation layer on top of the `remarkable` preset. Meant for
+# long-form prose you'll read away from a screen and mark up with the Marker:
+#
+#   * open line spacing, so there's room to write between the lines
+#   * a ruled notes band reserved across the foot of every page
+#   * every image reprinted full-page (rotated when that's bigger) in an
+#     appendix, with a tappable thumbnail ⇄ plate link in both directions
+#   * a serif face built for e-ink rather than the UI sans
+#
+# Layer it *after* `remarkable` — later defaults files win. Filters do not
+# merge, so both are listed here.
+
+filters:
+  - mermaid.lua
+  - figure-appendix.lua
+
+variables:
+  # Literata was drawn for Google Play Books e-readers: big x-height, sturdy
+  # stems that survive e-ink's soft edges, and enough contrast in the italic to
+  # read as a different voice. Inter for headings keeps the signposts crisp.
+  # See references/typefaces.md in the remarkable-pdf skill for alternatives.
+  mainfont: Literata
+  headingfont: Inter
+  monofont: FiraCode Nerd Font
+  fontsize: 11pt
+
+  # Line pitch ≈ 1.5× the type size — roughly 3.5mm of clear space between
+  # baselines, which is about the width of a Marker stroke plus a little air.
+  leading: 1.0em
+  par-spacing: 1.05em
+
+  # ~1.6in of ruled writing space at the foot of every page. Bump toward 55mm
+  # for a denser-margin habit; set to 0mm to reclaim the space.
+  notes-band: 40mm
+  notes-gap: 8mm
+
+  # Web exports carry a lot of blank canvas around their diagrams; trimming it
+  # is what makes the appendix plates worth the pages. The Pure is monochrome,
+  # so do the luminance conversion here rather than leaving it to the device.
+  figure-trim: true
+  figure-grayscale: true
+
+  # A dark-theme code screenshot becomes a page-sized black fill, which is the
+  # one thing e-ink handles badly (ghosting, slow refresh). Flip those. The
+  # detection split is not close — dark screenshots measure ~7% light pixels,
+  # light diagrams >97% — but set false if an article has genuinely dark photos.
+  figure-invert-dark: true

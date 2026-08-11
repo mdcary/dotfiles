@@ -234,6 +234,7 @@ in
     sqlcmd
     opentofu
     ssm-session-manager-plugin
+    dolt
 
     dotnet-sdk_10
     csharp-ls

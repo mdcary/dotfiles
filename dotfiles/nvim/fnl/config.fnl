@@ -350,6 +350,14 @@
                                         (: :gsub "%s+" "-"))
                                     ; replace spaces with hyphens
                                     (tostring (os.time))))
+                ;; Force execution via Linux obsidian binary instead of Windows
+                :open_app_func (fn [_client vault-name note-path]
+                                 (let [uri (.. "obsidian://open?vault="
+                                               vault-name
+                                               (if note-path
+                                                   (.. :&file= note-path)
+                                                   ""))]
+                                   (vim.fn.jobstart [:obsidian uri])))
                 :workspaces [{:name :public :path "~/vaults/public"}
                              {:name :constellation
                               :path "~/vaults/constellation"}]}}

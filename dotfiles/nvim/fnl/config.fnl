@@ -78,28 +78,49 @@
          :name :catppuccin
          :priority 1000
          :config (fn [] (vim.cmd.colorscheme :catppuccin-mocha))}
+        ;; STATUS LINE: lualine.nvim
+        {1 :nvim-lualine/lualine.nvim
+         :dependencies [:nvim-tree/nvim-web-devicons]
+         :event [:VeryLazy]
+         :opts {:options {:theme :catppuccin
+                           ;; One statusline across all splits instead of one
+                           ;; per window -- less duplicate chrome when the
+                           ;; smart-splits layout gets busy.
+                           :globalstatus true}
+                :sections {:lualine_x [;; Attached LSP client(s) for the
+                                       ;; current buffer, e.g. `roslyn_ls` --
+                                       ;; visible at a glance instead of
+                                       ;; having to :LspInfo to check.
+                                       (fn []
+                                         (let [names (icollect [_ client
+                                                                 (ipairs (vim.lsp.get_clients
+                                                                          {:bufnr 0}))]
+                                                       client.name)]
+                                           (table.concat names ",")))
+                                       :encoding
+                                       :filetype]}}}
         ;; SYNTAX: Treesitter (Main Branch Rewrite)
         {1 :nvim-treesitter/nvim-treesitter
          :branch :main
          :build ":TSUpdate"
          :config (fn []
                    (let [ts (require :nvim-treesitter)
-                         langs [:lua :fennel :python :javascript :markdown :c]]
+                         ;; Parser names, for `ts.install`.
+                         parsers [:lua :fennel :python :javascript :markdown
+                                  :c :c_sharp]
+                         ;; Filetypes, for the FileType autocmd below --
+                         ;; `c_sharp`'s filetype is `cs`, everything else
+                         ;; here happens to match its parser name.
+                         filetypes [:lua :fennel :python :javascript :markdown
+                                    :c :cs]]
                      ;; 1. Download parsers (Replaces `ensure_installed`)
                      ;; Note: This safely acts as a no-op if they are already installed.
-                     (ts.install langs)
+                     (ts.install parsers)
                      ;; 2. Enable Native Highlighting (Replaces `highlight = { enable = true }`)
                      (vim.api.nvim_create_autocmd :FileType
-                                                  {:pattern langs
+                                                  {:pattern filetypes
                                                    :callback (fn [args]
                                                                (vim.treesitter.start args.buf))})))}
-        ;; Neovim
-        ;; LSP: Mason & Nvim-Lspconfig
-        ;{1 :MeanderingProgrammer/render-markdown.nvim
-        ;:dependencies [:nvim-treesitter/nvim-treesitter :nvim-mini/mini.nvim]
-        ;;;@module 'render-markdown'
-        ;;;@type render.md.UserConfig
-        ;:opts {}}
         {1 :Olical/conjure :ft [:fennel :clojure]}
         {1 :junegunn/goyo.vim}
         {1 :toppair/peek.nvim
@@ -136,10 +157,36 @@
          :config (fn []
                    (let [mason (require :mason)
                          mason-lsp (require :mason-lspconfig)
-                         ;; 1. Add :omnisharp to your server list
-                         servers [:lua_ls :fennel_language_server :omnisharp]]
+                         ;; roslyn_ls (Microsoft's actively-maintained Roslyn
+                         ;; language server, the same one VS Code uses) loads
+                         ;; a whole .sln as ONE process, unlike OmniSharp
+                         ;; (unmaintained, one whole MSBuild process per
+                         ;; .csproj root). Every mason-sourced build of it
+                         ;; either segfaulted on startup or hung forever at
+                         ;; `initialize` on this box -- traced to nix's
+                         ;; dotnet-sdk's native runtime libs (libhostfxr.so
+                         ;; etc, which -- unlike the wrapped `dotnet` binary
+                         ;; -- carry no RPATH of their own) clashing with
+                         ;; this system's glibc. A `dotnet tool install
+                         ;; --global roslyn-language-server --prerelease`
+                         ;; run under a *non-nix* .NET runtime (installed via
+                         ;; Microsoft's own dotnet-install.sh, one-time
+                         ;; manual setup, not managed by home-manager) sidesteps
+                         ;; it entirely and runs clean. mason still owns
+                         ;; lua_ls/fennel_language_server.
+                         mason-managed [:lua_ls :fennel_language_server]
+                         servers [:lua_ls :fennel_language_server :roslyn_ls]]
                      (mason.setup)
-                     (mason-lsp.setup {:ensure_installed servers})
+                     ;; mason-lspconfig defaults to automatic_enable = true,
+                     ;; which auto-enables every *installed* mason LSP
+                     ;; package, not just `mason-managed` below -- so
+                     ;; removing a server from the list alone doesn't stop it
+                     ;; if it's still installed (e.g. a leftover omnisharp).
+                     ;; Disable that and make `servers` (below) the single
+                     ;; source of truth, enabled explicitly via
+                     ;; vim.lsp.enable.
+                     (mason-lsp.setup {:ensure_installed mason-managed
+                                       :automatic_enable false})
                      ;; Inside your existing fzf-lua config function:
                      (vim.keymap.set :n :<leader>gf
                                      "<cmd>FzfLua git_status<CR>"
@@ -154,6 +201,42 @@
                                      {:settings {:fennel {:diagnostics {:globals [:vim]}}}})
                      (vim.lsp.config :lua_ls
                                      {:settings {:Lua {:diagnostics {:globals [:vim]}}}})
+                     ;; nvim-lspconfig's bundled roslyn_ls root_dir also
+                     ;; handles decompiled-source buffers, so wrap rather than
+                     ;; replace it. Without this guard it would still attach
+                     ;; to non-real buffers (diffview's readonly `diffview://`
+                     ;; blobs, gitsigns previews, etc), each of which can
+                     ;; resolve to its own root and spawn a duplicate server
+                     ;; -- and for a real branch diff that touches N project
+                     ;; roots, N+ duplicate servers at once, which is what
+                     ;; crashed nvim in the first place.
+                     (let [default-root-dir (. (. vim.lsp.config :roslyn_ls) :root_dir)]
+                       (vim.lsp.config :roslyn_ls
+                                       {:root_dir (fn [bufnr on_dir]
+                                                    (let [bufname (vim.api.nvim_buf_get_name bufnr)]
+                                                      (when (and (= (. vim.bo bufnr :buftype)
+                                                                     "")
+                                                                 (not (bufname:find "://")))
+                                                        (default-root-dir bufnr on_dir))))}))
+                     ;; See the note on `servers` above: run under the
+                     ;; non-nix .NET runtime, not nix's dotnet-sdk. One-time
+                     ;; manual setup this depends on:
+                     ;;   bash <(curl -fsSL https://dot.net/v1/dotnet-install.sh) \
+                     ;;     --channel 10.0 --install-dir ~/.local/dotnet-msft
+                     ;;   DOTNET_ROOT=~/.local/dotnet-msft ~/.local/dotnet-msft/dotnet \
+                     ;;     tool install --global roslyn-language-server --prerelease
+                     ;; Resolved by fixed path, not exepath/PATH search: mason's
+                     ;; bin dir comes earlier on PATH and would otherwise win
+                     ;; with its own (broken, see above) roslyn-language-server.
+                     (let [msft-dotnet (vim.fn.expand "~/.local/dotnet-msft/dotnet")
+                           roslyn-bin (vim.fn.expand "~/.dotnet/tools/roslyn-language-server")]
+                       (when (and (= 1 (vim.fn.executable msft-dotnet))
+                                  (= 1 (vim.fn.executable roslyn-bin)))
+                         (vim.lsp.config :roslyn_ls
+                                         {:cmd [msft-dotnet
+                                                (.. (vim.fn.resolve roslyn-bin) ".dll")
+                                                :--stdio]
+                                          :cmd_env {:DOTNET_ROOT (vim.fn.expand "~/.local/dotnet-msft")}})))
                      (vim.lsp.enable servers)
                      ;; 2. Native LSP Keybindings (Triggers when an LSP attaches)
                      (vim.api.nvim_create_autocmd :LspAttach
@@ -263,7 +346,11 @@
                                   (set vim.opt.ruler true)
                                   (vim.fn.system "tmux set-option status on"))}}
          ;; Distraction-free coding mode
-         :keys [{1 :<leader>gd
+         ;; NOTE: was <leader>gd, which collided with diffview.nvim's
+         ;; <leader>gd (DiffviewOpen, uncommitted) -- last-loaded plugin
+         ;; silently won the mapping. Moved to <leader>gp (picker) to keep
+         ;; both reachable.
+         :keys [{1 :<leader>gp
                  2 (fn []
                      ((. (require :snacks) :picker :git_diff) {:base :origin/main}))
                  :desc "Branch Changed Files (vs origin/main)"}
@@ -281,15 +368,7 @@
                 {1 :<leader>nd
                  2 (fn []
                      ((. (require :snacks) :notifier :hide)))
-                 :desc "Dismiss All Notifications"}
-                {1 "]]"
-                 2 (fn []
-                     ((. (require :snacks) :words :jump) 1 true))
-                 :desc "Next Variable Reference"}
-                {1 "[["
-                 2 (fn []
-                     ((. (require :snacks) :words :jump) -1 true))
-                 :desc "Prev Variable Reference"}]}
+                 :desc "Dismiss All Notifications"}]}
         ;; TMUX INTEGRATION: Smart-Splits (Navigation & Resizing)
         ;; `:opts` is required — without it, setup() never runs and the
         ;; `@pane-is-vim` tmux variable is never written, so the tmux side
@@ -428,8 +507,13 @@
                                     "Blame Line")
                                (map :n :<leader>td gs.toggle_deleted
                                     "Toggle Deleted Lines Highlight")
-                               ;; Target gutter diffs against target branch instead of HEAD
-                               (map :n :<leader>gB
+                               ;; Target gutter diffs against target branch instead of HEAD.
+                               ;; Was <leader>gB, which collided with snacks.nvim's
+                               ;; global <leader>gB (open line in GitHub/browser) --
+                               ;; this buffer-local mapping silently won on any
+                               ;; gitsigns-attached buffer. Paired with <leader>gR
+                               ;; (Reset) below under <leader>gS (Set) instead.
+                               (map :n :<leader>gS
                                     "<cmd>Gitsigns change_base origin/main true<CR>"
                                     "Set Diff Base to origin/main")
                                (map :n :<leader>gR

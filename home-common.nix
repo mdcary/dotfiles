@@ -313,7 +313,6 @@ in
       gcc
       gnumake
       tree-sitter
-      dotnet-sdk
 
       # Formatters
       stylua

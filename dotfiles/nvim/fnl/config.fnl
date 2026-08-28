@@ -140,6 +140,16 @@
                          servers [:lua_ls :fennel_language_server :omnisharp]]
                      (mason.setup)
                      (mason-lsp.setup {:ensure_installed servers})
+                     ;; Inside your existing fzf-lua config function:
+                     (vim.keymap.set :n :<leader>gf
+                                     "<cmd>FzfLua git_status<CR>"
+                                     {:desc "Git Changed Files"})
+                     (vim.keymap.set :n :<leader>gb
+                                     "<cmd>FzfLua git_branches<CR>"
+                                     {:desc "Git Switch Branch"})
+                     (vim.keymap.set :n :<leader>gc
+                                     "<cmd>FzfLua git_commits<CR>"
+                                     {:desc "Git Commit Log"})
                      (vim.lsp.config :fennel_language_server
                                      {:settings {:fennel {:diagnostics {:globals [:vim]}}}})
                      (vim.lsp.config :lua_ls
@@ -221,6 +231,8 @@
          :priority 1000
          :lazy false
          :opts {:notifier {:enabled true :timeout 3000}
+                :explorer {:enabled true}
+                :picker {:enabled true}
                 ;; Beautiful popup notifications
                 :dashboard {:enabled false}
                 ;; Startup screen with recent files
@@ -251,10 +263,17 @@
                                   (set vim.opt.ruler true)
                                   (vim.fn.system "tmux set-option status on"))}}
          ;; Distraction-free coding mode
-         :keys [{1 :<leader>z
+         :keys [{1 :<leader>gd
+                 2 (fn []
+                     ((. (require :snacks) :picker :git_diff) {:base :origin/main}))
+                 :desc "Branch Changed Files (vs origin/main)"}
+                {1 :<leader>z
                  2 (fn []
                      ((. (require :snacks) :zen :zen)))
                  :desc "Toggle Zen Mode"}
+                {1 :<leader>e
+                 2 (fn []
+                     ((. (require :snacks) :explorer)))}
                 {1 :<leader>gB
                  2 (fn []
                      ((. (require :snacks) :gitbrowse :open)))
@@ -361,6 +380,61 @@
                 :workspaces [{:name :public :path "~/vaults/public"}
                              {:name :constellation
                               :path "~/vaults/constellation"}]}}
+        ;; FULL BRANCH REVIEW: diffview.nvim
+        {1 :sindrets/diffview.nvim
+         :cmd [:DiffviewOpen
+               :DiffviewClose
+               :DiffviewToggleFiles
+               :DiffviewFocusFiles]
+         :keys [{1 :<leader>gd
+                 2 :<cmd>DiffviewOpen<CR>
+                 :desc "Diff View (Uncommitted)"}
+                {1 :<leader>gD
+                 2 "<cmd>DiffviewOpen origin/main<CR>"
+                 :desc "Diff View vs origin/main"}
+                {1 :<leader>gq
+                 2 :<cmd>DiffviewClose<CR>
+                 :desc "Close Diff View"}]}
+        ;; IN-BUFFER GUTTER & HUNK DIFFS: gitsigns.nvim
+        {1 :lewis6991/gitsigns.nvim
+         :event [:BufReadPre :BufNewFile]
+         :opts {:signcolumn true
+                :numhl false
+                :on_attach (fn [bufnr]
+                             (let [gs package.loaded.gitsigns
+                                   map (fn [mode lhs rhs desc]
+                                         (vim.keymap.set mode lhs rhs
+                                                         {:buffer bufnr : desc}))]
+                               ;; Jump between changed hunks in the buffer
+                               (map :n "]c"
+                                    (fn []
+                                      (if vim.wo.diff "]c"
+                                          (do
+                                            (gs.next_hunk)
+                                            :<Ignore>)))
+                                    "Next Git Hunk")
+                               (map :n "[c"
+                                    (fn []
+                                      (if vim.wo.diff "[c"
+                                          (do
+                                            (gs.prev_hunk)
+                                            :<Ignore>)))
+                                    "Prev Git Hunk")
+                               ;; Hunk actions & line diff previews
+                               (map :n :<leader>hp gs.preview_hunk
+                                    "Preview Hunk Diff")
+                               (map :n :<leader>hb
+                                    (fn [] (gs.blame_line {:full true}))
+                                    "Blame Line")
+                               (map :n :<leader>td gs.toggle_deleted
+                                    "Toggle Deleted Lines Highlight")
+                               ;; Target gutter diffs against target branch instead of HEAD
+                               (map :n :<leader>gB
+                                    "<cmd>Gitsigns change_base origin/main true<CR>"
+                                    "Set Diff Base to origin/main")
+                               (map :n :<leader>gR
+                                    "<cmd>Gitsigns reset_base<CR>"
+                                    "Reset Diff Base to HEAD")))}}
         ;; FORMATTING: conform.nvim
         {1 :stevearc/conform.nvim
          :opts {:formatters_by_ft {:lua [:stylua]

@@ -67,10 +67,13 @@ in
       "profile llm-tool-access"  = mkProfile "llm-tool-access" "367268567544" "llm-tool-access";
       "profile prod-admin" = mkProfile "prod-admin" "096002140659" "AWSAdministratorAccess";
       "profile prod" = mkProfile "prod" "096002140659" "dev-team-access";
+      "profile datalake" = mkProfile "datalake" "096002140659" "datalake-read-all-access";
       "profile devops"     = mkProfile "devops" "789261558096" "AWSAdministratorAccess";
+      "profile vendorvpn"     = mkProfile "vpn" "497502377919" "AWSAdministratorAccess";
       "profile logs"      = mkProfile "logs" "616967731364" "AWSAdministratorAccess";
       "profile audit"      = mkProfile "audit" "718557712346" "AWSAdministratorAccess";
       "profile management"    = mkProfile "management" "637217033209" "AWSAdministratorAccess";
+      "profile marketplace" = mkProfile "marketplace" "844968525216" "AWSAdministratorAccess";
       "profile omnipilot"    = mkProfile "omnipilot" "277207922039" "AWSAdministratorAccess";
       "profile omni"    = mkProfile "omni" "341796273866" "AWSAdministratorAccess";
 

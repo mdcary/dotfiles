@@ -449,6 +449,8 @@ in
     ghostscript
 
     babashka
+    clojure
+    leiningen
     deno
 
     # Document & media utilities

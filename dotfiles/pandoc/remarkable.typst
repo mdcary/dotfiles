@@ -307,8 +307,16 @@
   )
   show table.cell.where(y: 0): set text(weight: "bold", size: 9pt)
   show table: set text(size: 9pt)
-  // Pandoc wraps every table in `align(center)[…]`; on a narrow page a table
-  // floating mid-column reads as a stray block, so pull it back to the margin.
+  // Pandoc wraps every table in `align(center)[…]`, and its `auto` column
+  // alignments inherit that, so cell text centers itself into ragged stacks on
+  // a narrow column. Pull it back to the margin.
+  show table: set align(left)
+  // Pandoc also wraps every table in a `#figure`, whose block is non-breakable:
+  // a table taller than the page does not split at a page boundary, it overruns
+  // and prints its remaining rows on top of each other. Nothing errors and the
+  // page count looks plausible — the rows just become an unreadable smear, so
+  // this is only caught by looking at the render.
+  show figure.where(kind: table): set block(breakable: true)
 
   // Task lists: pandoc emits ☐/☒, which Inter renders as cramped little
   // glyphs. Swap in a real box big enough to tick with the Marker.

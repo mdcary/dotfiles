@@ -82,7 +82,13 @@
         {1 :nvim-lualine/lualine.nvim
          :dependencies [:nvim-tree/nvim-web-devicons]
          :event [:VeryLazy]
-         :opts {:options {:theme :catppuccin
+         :opts {:options {;; lualine looks up the theme as a module named
+                           ;; exactly `catppuccin-<flavor>` (shipped by the
+                           ;; catppuccin plugin itself, not lualine's own
+                           ;; bundled themes) -- matches the mocha flavor set
+                           ;; as the colorscheme above. Plain `catppuccin`
+                           ;; doesn't resolve and silently falls back to `auto`.
+                           :theme :catppuccin-mocha
                            ;; One statusline across all splits instead of one
                            ;; per window -- less duplicate chrome when the
                            ;; smart-splits layout gets busy.
@@ -536,7 +542,30 @@
                                    :bash [:shfmt]
                                    ;; PowerShell (Runs `pwsh -c Invoke-Formatter`)
                                    :ps1 [:powershell]}
-                :format_on_save {:timeout_ms 500 :lsp_format :fallback}}}])
+                ;; csharpier cold-starts a .NET process on every run (no
+                ;; persistent daemon conform can use easily) -- timed at
+                ;; ~440ms just for the CLI to format one file even outside
+                ;; nvim, so a synchronous 500ms save-time budget tripped
+                ;; under any WSL disk/CPU contention and silently skipped
+                ;; the format ("Formatter 'csharpier' timeout" in
+                ;; conform.log). csharpier does ship warm-process modes
+                ;; (`server`, gRPC-based; `pipe-files`, stdin-driven with no
+                ;; clear per-request completion signal) but neither has a
+                ;; documented API for generic tooling -- they're built for
+                ;; the official VS Code/Rider/VS extensions specifically, and
+                ;; a from-scratch client for either would be real complexity
+                ;; for a formatter that's only "slow" in an absolute sense.
+                ;; Instead: format cs files asynchronously after the write
+                ;; completes, so the cold start never blocks :w. Every other
+                ;; filetype here finishes in low tens of ms and stays
+                ;; synchronous, so save-time feedback there is unaffected.
+                :format_on_save (fn [bufnr]
+                                  (when (not= (. vim.bo bufnr :filetype) :cs)
+                                    {:timeout_ms 3000 :lsp_format :fallback}))
+                :format_after_save (fn [bufnr]
+                                      (when (= (. vim.bo bufnr :filetype) :cs)
+                                        {:timeout_ms 3000
+                                         :lsp_format :fallback}))}}])
 
 ;; Run lazy.setup
 (let [lazy (require :lazy)

@@ -451,6 +451,7 @@ in
     clojure
     leiningen
     deno
+    clj-kondo
 
     # Document & media utilities
     exiftool

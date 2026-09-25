@@ -1,0 +1,53 @@
+# pandoc -d remarkable -d remarkable-read doc.md -o doc.pdf
+#
+# Reading layer on top of the `remarkable` preset — the counterpart to
+# `remarkable-article`. Same device page, same monochrome styling, but sized
+# for a document you'll *read* on the Pure rather than mark up:
+#
+#   * no ruled notes band — the foot of the page is page, not stationery
+#   * line spacing set for reading, not for writing between the lines
+#   * figures stay inline instead of being reprinted as appendix plates
+#   * the same e-ink image prep (trim, grayscale, flip dark screenshots)
+#
+# Roughly the page count of the bare `remarkable` preset, with the typography
+# of `remarkable-article`. Layer it *after* `remarkable` — later wins. Filters
+# do not merge, so both are listed here.
+
+filters:
+  - mermaid.lua
+  # Kept for the image prep below, not for the appendix (disabled in variables).
+  - figure-appendix.lua
+
+variables:
+  # Same reading face as the article preset: Literata was drawn for e-readers,
+  # Inter keeps the headings crisp. See the remarkable-pdf skill's
+  # references/typefaces.md before swapping either.
+  mainfont: Literata
+  headingfont: Inter
+  monofont: FiraCode Nerd Font
+  fontsize: 11pt
+
+  # Between the base preset's 0.62em (dense) and the article preset's 1.0em
+  # (a Marker stroke plus air). Comfortable to read, no room to write — which
+  # is the whole point of this preset.
+  leading: 0.8em
+  par-spacing: 0.95em
+
+  # Explicitly zero rather than inherited: this preset has to undo the band if
+  # someone layers it after `remarkable-article`.
+  notes-band: 0mm
+
+  # A slightly wider measure than the base preset — the text column is doing
+  # all the work here, with no margin furniture beside it.
+  margin:
+    top: 14mm
+    bottom: 13mm
+    left: 15mm
+    right: 14mm
+
+  # Inline figures: a reading document reads better with the picture where the
+  # prose put it. The filter still runs, for the three e-ink fixes below.
+  figure-appendix: false
+  figure-trim: true
+  figure-grayscale: true
+  figure-invert-dark: true

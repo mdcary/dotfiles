@@ -31,6 +31,9 @@ in
     # Layered on top for long-form reading: `-d remarkable -d remarkable-article`.
     "pandoc/defaults/remarkable-article.yaml".source =
       config.lib.file.mkOutOfStoreSymlink "${repoDir}/dotfiles/pandoc/remarkable-article.yaml";
+    # Layered on top for reading without annotating: `-d remarkable -d remarkable-read`.
+    "pandoc/defaults/remarkable-read.yaml".source =
+      config.lib.file.mkOutOfStoreSymlink "${repoDir}/dotfiles/pandoc/remarkable-read.yaml";
     "pandoc/filters/mermaid.lua".source =
       config.lib.file.mkOutOfStoreSymlink "${repoDir}/dotfiles/pandoc/mermaid.lua";
     "pandoc/filters/figure-appendix.lua".source =
@@ -201,6 +204,10 @@ in
       # terminal. Takes effect at client attach, so `tmux kill-server` after a
       # rebuild.
       set -as terminal-features ",*:RGB"
+
+      # Pi wants these?
+      set -g extended-keys on
+      set -g extended-keys-format csi-u
 
       # --- Prefix Setup ---
       unbind C-b

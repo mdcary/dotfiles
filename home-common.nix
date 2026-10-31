@@ -39,6 +39,26 @@ in
       config.lib.file.mkOutOfStoreSymlink "${repoDir}/dotfiles/pandoc/drop-empty-links.lua";
   };
 
+  # Conjure connects to an nREPL server but never starts one, so keep a global
+  # alias that stands one up in any project: `clj -M:repl/conjure`. It writes
+  # .nrepl-port into the cwd, which Conjure then auto-detects on buffer open.
+  #
+  # The clojure CLI reads $XDG_CONFIG_HOME/clojure/deps.edn when that var is
+  # set (it is here, to ~/.config) and ~/.clojure/deps.edn otherwise — so this
+  # is the correct home for it on this machine, not home.file.
+  #
+  # cider-nrepl is optional but supplies completion, docs and jump-to-def to
+  # the REPL client; plain nrepl alone gets you eval and little else.
+  xdg.configFile."clojure/deps.edn".text = ''
+    {:aliases
+     {:repl/conjure
+      {:extra-deps {nrepl/nrepl {:mvn/version "1.7.0"}
+                    cider/cider-nrepl {:mvn/version "0.62.2"}}
+       :main-opts ["-m" "nrepl.cmdline"
+                   "--middleware" "[cider.nrepl/cider-middleware]"
+                   "--interactive"]}}}
+  '';
+
   programs.bun.enable = true;
   programs.lazyworktree.enable = true;
   programs.lazysql.enable = true;
@@ -202,6 +222,23 @@ in
       # rebuild.
       set -as terminal-features ",*:RGB"
 
+      # --- Extended keys (for pi.dev and other modern TUIs) ---
+      # By default tmux sends Shift+Enter, Ctrl+Enter and Enter as the same
+      # key, so pi can't tell newline from submit. With extended-keys on, tmux
+      # passes modified keys through, and CSI-u (tmux 3.5+) is the encoding pi
+      # recommends. The extkeys feature makes tmux ask the outer terminal to
+      # report modified keys at all. Restart the server (`tmux kill-server`)
+      # for this to take effect.
+      set -g extended-keys on
+      set -g extended-keys-format csi-u
+      set -as terminal-features ",*:extkeys"
+
+      # Let apps inside tmux send escape sequences straight to the outer
+      # terminal (inline images, hyperlinks), and copy to the system
+      # clipboard over OSC 52.
+      set -g allow-passthrough on
+      set -g set-clipboard on
+
       # --- Prefix Setup ---
       unbind C-b
       set -g prefix C-a
@@ -314,6 +351,12 @@ in
       gnumake
       tree-sitter
 
+      # clojure-lsp is a GraalVM native image, so it needs no JVM itself; it
+      # shells out to `clj -Spath` for classpaths, which the wrapper above
+      # satisfies. Unlike lua_ls/omnisharp this comes from nix rather than
+      # mason, so config.fnl enables it outside the ensure_installed list.
+      clojure-lsp
+
       # Formatters
       stylua
       fnlfmt
@@ -321,6 +364,7 @@ in
       ruff
       prettierd
       shfmt
+      cljfmt
     ];
   };
 
@@ -387,20 +431,19 @@ in
         IdentitiesOnly = true;
       };
 
-      "flourish" = {
-        HostName = "ssh.nyc1.nearlyfreespeech.net";
-        User = "caryme_flourishinplace";
-      };
-
       "fip" = {
         HostName = "5.161.230.35";
         User = "cary";
         IdentitiesOnly = true;
+        ControlMaster = "auto";
+        ControlPath = "~/.ssh/cm-%r@%h:%p";
+        ControlPersist = "10m";
       };
 
       "gringotts" = {
         HostName = "192.168.8.3";
         User = "cary";
+        WarnWeakCrypto = "no";
       };
 
       "*" = {
@@ -429,7 +472,7 @@ in
     sl
     cloudflared
 
-    nodejs
+    nodejs_26
 
     texlive.combined.scheme-small
 
@@ -448,6 +491,9 @@ in
     ghostscript
 
     babashka
+    # The wrapper prepends its own Zulu JDK 21 to PATH, so `clj` works without a
+    # JDK in home.packages. Add temurin-bin-21 separately if you ever want bare
+    # `java`/`javac` — /usr/bin/java is only Apple's "install a JRE" stub.
     clojure
     leiningen
     deno
@@ -497,8 +543,18 @@ in
     llm-agents.packages.${system}.showboat
 
     # simonw/rodney: Chrome automation CLI. Not in llm-agents.nix, so built
-    # from source here and wrapped to use nixpkgs chromium at runtime.
-    (pkgs.callPackage ./pkgs/rodney.nix { })
+    # from source here and wrapped to use a Chrome binary at runtime.
+    #
+    # nixpkgs chromium is Linux-only, so on darwin we point at the Chrome
+    # that's already installed under /Applications rather than pulling
+    # nixpkgs google-chrome (~150MB, and lib.getExe can't find its binary —
+    # the darwin build ships an .app bundle with no meta.mainProgram).
+    (pkgs.callPackage ./pkgs/rodney.nix {
+      chromeBin =
+        if pkgs.stdenv.isDarwin
+        then "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+        else lib.getExe pkgs.chromium;
+    })
   ];
 
   fonts.fontconfig.enable = true;

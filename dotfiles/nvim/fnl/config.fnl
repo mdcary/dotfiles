@@ -113,12 +113,12 @@
                    (let [ts (require :nvim-treesitter)
                          ;; Parser names, for `ts.install`.
                          parsers [:lua :fennel :python :javascript :markdown
-                                  :c :c_sharp]
+                                  :c :c_sharp :clojure]
                          ;; Filetypes, for the FileType autocmd below --
                          ;; `c_sharp`'s filetype is `cs`, everything else
                          ;; here happens to match its parser name.
                          filetypes [:lua :fennel :python :javascript :markdown
-                                    :c :cs]]
+                                    :c :cs :clojure]]
                      ;; 1. Download parsers (Replaces `ensure_installed`)
                      ;; Note: This safely acts as a no-op if they are already installed.
                      (ts.install parsers)
@@ -244,6 +244,10 @@
                                                 :--stdio]
                                           :cmd_env {:DOTNET_ROOT (vim.fn.expand "~/.local/dotnet-msft")}})))
                      (vim.lsp.enable servers)
+                     ;; clojure-lsp comes from nix (neovim.extraPackages), not
+                     ;; mason, so it stays out of `servers` / ensure_installed
+                     ;; and is enabled on its own here.
+                     (vim.lsp.enable :clojure_lsp)
                      ;; 2. Native LSP Keybindings (Triggers when an LSP attaches)
                      (vim.api.nvim_create_autocmd :LspAttach
                                                   {:callback (fn [args]
@@ -529,6 +533,11 @@
         {1 :stevearc/conform.nvim
          :opts {:formatters_by_ft {:lua [:stylua]
                                    :fennel [:fnlfmt]
+                                   ;; clojure-lsp would already format via the
+                                   ;; :lsp_format :fallback below (it embeds
+                                   ;; cljfmt), but naming cljfmt outright makes
+                                   ;; a project .cljfmt.edn apply predictably.
+                                   :clojure [:cljfmt]
                                    :cs [:csharpier]
                                    ;; Python: Sort imports/fix, then format
                                    :python [:ruff_fix :ruff_format]

@@ -28,6 +28,8 @@
     # docker + docker-compose, so these two are the only nix pieces DDEV needs.
     ddev
     mkcert
+
+    opencode
   ];
 
   # OrbStack's docker / orb / docker-compose (DDEV provider). Merges with the

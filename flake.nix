@@ -117,6 +117,7 @@
                 "orbstack"
                 "iterm2"
                 "visual-studio-code"
+                "blender"
                 "audacity"
                 "adobe-digital-editions"
                 "prusaslicer"

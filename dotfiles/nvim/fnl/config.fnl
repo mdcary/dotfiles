@@ -9,66 +9,67 @@
 ;; --- UI & Display ---
 (set vim.opt.number true)
 
-;; Relative line numbers for easy jumping (e.g., 5j)
+;; Enable 24-bit RGB colors
 (set vim.opt.termguicolors true)
 
-;; Enable 24-bit RGB colors
+;; Highlight the current line...
 (set vim.opt.cursorline true)
 
-;; Highlight the current line
+;; ...but only its line number, not the whole line — avoids j/k redraw lag
 (set vim.opt.cursorlineopt :number)
 
-;; Only highlight the line number, not the whole line — avoids j/k redraw lag
+;; Always show the gutter (prevents text shifting when errors appear)
 (set vim.opt.signcolumn :yes)
 
-;; Always show the gutter (prevents text shifting when errors appear)
+;; Keep 8 lines above/below the cursor when scrolling
 (set vim.opt.scrolloff 8)
 
-;; Keep 8 lines above/below the cursor when scrolling
-
 ;; --- Tabs & Indentation ---
+;; Convert Tabs to spaces
 (set vim.opt.expandtab true)
 
-;; Convert Tabs to spaces
-(set vim.opt.shiftwidth 2)
-
 ;; Indent size
+(set vim.opt.shiftwidth 2)
 (set vim.opt.tabstop 2)
 
 ;; Auto-indent new lines intelligently
 (vim.cmd "filetype plugin indent on")
 
 ;; --- Search ---
+;; Case-insensitive search...
 (set vim.opt.ignorecase true)
 
-;; Case-insensitive search
+;; ...unless you type a capital letter
 (set vim.opt.smartcase true)
 
-;; ...unless you type a capital letter
+;; Show live preview of search/replace across the file
 (set vim.opt.inccommand :split)
 
-;; Show live preview of search/replace across the file
-
 ;; --- Quality of Life ---
+;; Sync with system clipboard
 (set vim.opt.clipboard :unnamedplus)
 
 ;; Paste from system clipboard in Insert mode using Ctrl+v
 (vim.keymap.set :i :<C-v> :<C-r>+)
 
-;; Sync with system clipboard
+;; Faster completion and hover delays (default is 4000ms)
 (set vim.opt.updatetime 250)
 
-;; Faster completion and hover delays (default is 4000ms)
+;; Vertical splits open to the right
 (set vim.opt.splitright true)
 
-;; Vertical splits open to the right
-(set vim.opt.splitbelow true)
-
 ;; Horizontal splits open below
+(set vim.opt.splitbelow true)
 
 ;; ==============================================================================
 ;; 2. PLUGIN SPECIFICATION (Using lazy.nvim)
 ;; ==============================================================================
+
+;; On the data workbench box (Infrastructure: modules/workbench-stack) this
+;; config runs too, synced onto its EFS home. Laptop-only plugins and tooling
+;; are skipped there with `:cond (not workbench?)`.
+(local workbench? (not= nil (os.getenv :WORKBENCH_HANDLE)))
+
 (local plugins
        [;; LISP COMPILER: hotpot.nvim (already loaded by init.lua;
         ;; listed here so Lazy can manage updates)
@@ -112,13 +113,20 @@
          :config (fn []
                    (let [ts (require :nvim-treesitter)
                          ;; Parser names, for `ts.install`.
-                         parsers [:lua :fennel :python :javascript :markdown
-                                  :c :c_sharp]
+                         parsers (if workbench?
+                                     [:lua :python :markdown :sql :json :yaml
+                                      :toml :bash]
+                                     [:lua :fennel :python :javascript :markdown
+                                      :c :c_sharp])
                          ;; Filetypes, for the FileType autocmd below --
-                         ;; `c_sharp`'s filetype is `cs`, everything else
-                         ;; here happens to match its parser name.
-                         filetypes [:lua :fennel :python :javascript :markdown
-                                    :c :cs]]
+                         ;; `c_sharp`'s filetype is `cs`, and `bash`'s is `sh`;
+                         ;; everything else here happens to match its parser
+                         ;; name.
+                         filetypes (if workbench?
+                                       [:lua :python :markdown :sql :json :yaml
+                                        :toml :sh]
+                                       [:lua :fennel :python :javascript
+                                        :markdown :c :cs])]
                      ;; 1. Download parsers (Replaces `ensure_installed`)
                      ;; Note: This safely acts as a no-op if they are already installed.
                      (ts.install parsers)
@@ -127,9 +135,9 @@
                                                   {:pattern filetypes
                                                    :callback (fn [args]
                                                                (vim.treesitter.start args.buf))})))}
-        {1 :Olical/conjure :ft [:fennel :clojure]}
-        {1 :junegunn/goyo.vim}
+        {1 :Olical/conjure :ft [:fennel :clojure] :cond (not workbench?)}
         {1 :toppair/peek.nvim
+         :cond (not workbench?)
          :event [:VeryLazy]
          :build "deno task --quiet build:fast"
          :config (fn []
@@ -158,8 +166,8 @@
                      (vim.api.nvim_create_user_command :PeekOpen peek.open {})
                      (vim.api.nvim_create_user_command :PeekClose peek.close {})))}
         {1 :neovim/nvim-lspconfig
-         :dependencies [:williamboman/mason.nvim
-                        :williamboman/mason-lspconfig.nvim]
+         :dependencies [:mason-org/mason.nvim
+                        :mason-org/mason-lspconfig.nvim]
          :config (fn []
                    (let [mason (require :mason)
                          mason-lsp (require :mason-lspconfig)
@@ -180,8 +188,12 @@
                          ;; manual setup, not managed by home-manager) sidesteps
                          ;; it entirely and runs clean. mason still owns
                          ;; lua_ls/fennel_language_server.
-                         mason-managed [:lua_ls :fennel_language_server]
-                         servers [:lua_ls :fennel_language_server :roslyn_ls]]
+                         ;; The workbench box has pyright and ruff installed
+                         ;; and no cargo to build fennel_language_server.
+                         mason-managed (if workbench? []
+                                           [:lua_ls :fennel_language_server])
+                         servers (if workbench? [:pyright :ruff]
+                                     [:lua_ls :fennel_language_server :roslyn_ls])]
                      (mason.setup)
                      ;; mason-lspconfig defaults to automatic_enable = true,
                      ;; which auto-enables every *installed* mason LSP
@@ -193,16 +205,6 @@
                      ;; vim.lsp.enable.
                      (mason-lsp.setup {:ensure_installed mason-managed
                                        :automatic_enable false})
-                     ;; Inside your existing fzf-lua config function:
-                     (vim.keymap.set :n :<leader>gf
-                                     "<cmd>FzfLua git_status<CR>"
-                                     {:desc "Git Changed Files"})
-                     (vim.keymap.set :n :<leader>gb
-                                     "<cmd>FzfLua git_branches<CR>"
-                                     {:desc "Git Switch Branch"})
-                     (vim.keymap.set :n :<leader>gc
-                                     "<cmd>FzfLua git_commits<CR>"
-                                     {:desc "Git Commit Log"})
                      (vim.lsp.config :fennel_language_server
                                      {:settings {:fennel {:diagnostics {:globals [:vim]}}}})
                      (vim.lsp.config :lua_ls
@@ -302,7 +304,16 @@
                      (vim.keymap.set :n :<leader>ff "<cmd>FzfLua files<CR>"
                                      {:desc "Find Files"})
                      (vim.keymap.set :n :<leader>fg "<cmd>FzfLua live_grep<CR>"
-                                     {:desc "Live Grep"})))}
+                                     {:desc "Live Grep"})
+                     (vim.keymap.set :n :<leader>gf
+                                     "<cmd>FzfLua git_status<CR>"
+                                     {:desc "Git Changed Files"})
+                     (vim.keymap.set :n :<leader>gb
+                                     "<cmd>FzfLua git_branches<CR>"
+                                     {:desc "Git Switch Branch"})
+                     (vim.keymap.set :n :<leader>gc
+                                     "<cmd>FzfLua git_commits<CR>"
+                                     {:desc "Git Commit Log"})))}
         ;; FILE EXPLORER: oil.nvim
         ;; Eager-loaded (per oil's README) so it registers its directory
         ;; buffer handler before `nvim .` / `:e dir/` are used.
@@ -319,19 +330,20 @@
         {1 :folke/snacks.nvim
          :priority 1000
          :lazy false
-         :opts {:notifier {:enabled true :timeout 3000}
+         :opts {;; Popup notifications
+                :notifier {:enabled true :timeout 3000}
                 :explorer {:enabled true}
                 :picker {:enabled true}
-                ;; Beautiful popup notifications
-                :dashboard {:enabled false}
                 ;; Startup screen with recent files
-                :bigfile {:enabled true}
+                :dashboard {:enabled false}
                 ;; Auto-disables LSP/Treesitter on massive files so Nvim doesn't freeze
-                :quickfile {:enabled true}
+                :bigfile {:enabled true}
                 ;; Renders files instantly before plugins even load
-                :words {:enabled false}
+                :quickfile {:enabled true}
                 ;; Auto-highlights matching variables under your cursor — disabled,
                 ;; the CursorMoved LSP documentHighlight calls caused j/k lag
+                :words {:enabled false}
+                ;; Distraction-free coding mode
                 :zen {:enabled true
                       :wo {:number false
                            :relativenumber false
@@ -351,8 +363,7 @@
                                   (set vim.opt.number true)
                                   (set vim.opt.ruler true)
                                   (vim.fn.system "tmux set-option status on"))}}
-         ;; Distraction-free coding mode
-         ;; NOTE: was <leader>gd, which collided with diffview.nvim's
+         ;; NOTE: <leader>gp was <leader>gd, which collided with diffview.nvim's
          ;; <leader>gd (DiffviewOpen, uncommitted) -- last-loaded plugin
          ;; silently won the mapping. Moved to <leader>gp (picker) to keep
          ;; both reachable.
@@ -430,6 +441,7 @@
                        {1 :<leader>g :group :Git :icon " "}
                        {1 :<leader>n :group :Notifications :icon " "}]}}
         {1 :obsidian-nvim/obsidian.nvim
+         :cond (not workbench?)
          :version "*"
          ;;@module 'obsidian'
          ;;@type obsidian.config
@@ -490,20 +502,19 @@
                                    map (fn [mode lhs rhs desc]
                                          (vim.keymap.set mode lhs rhs
                                                          {:buffer bufnr : desc}))]
-                               ;; Jump between changed hunks in the buffer
+                               ;; Jump between changed hunks in the buffer; in a
+                               ;; diff window, fall through to vim's own ]c / [c.
                                (map :n "]c"
                                     (fn []
-                                      (if vim.wo.diff "]c"
-                                          (do
-                                            (gs.next_hunk)
-                                            :<Ignore>)))
+                                      (if vim.wo.diff
+                                          (vim.cmd.normal {1 "]c" :bang true})
+                                          (gs.nav_hunk :next)))
                                     "Next Git Hunk")
                                (map :n "[c"
                                     (fn []
-                                      (if vim.wo.diff "[c"
-                                          (do
-                                            (gs.prev_hunk)
-                                            :<Ignore>)))
+                                      (if vim.wo.diff
+                                          (vim.cmd.normal {1 "[c" :bang true})
+                                          (gs.nav_hunk :prev)))
                                     "Prev Git Hunk")
                                ;; Hunk actions & line diff previews
                                (map :n :<leader>hp gs.preview_hunk
@@ -511,8 +522,8 @@
                                (map :n :<leader>hb
                                     (fn [] (gs.blame_line {:full true}))
                                     "Blame Line")
-                               (map :n :<leader>td gs.toggle_deleted
-                                    "Toggle Deleted Lines Highlight")
+                               (map :n :<leader>td gs.preview_hunk_inline
+                                    "Preview Hunk Inline (shows deleted lines)")
                                ;; Target gutter diffs against target branch instead of HEAD.
                                ;; Was <leader>gB, which collided with snacks.nvim's
                                ;; global <leader>gB (open line in GitHub/browser) --
@@ -527,21 +538,24 @@
                                     "Reset Diff Base to HEAD")))}}
         ;; FORMATTING: conform.nvim
         {1 :stevearc/conform.nvim
-         :opts {:formatters_by_ft {:lua [:stylua]
-                                   :fennel [:fnlfmt]
-                                   :cs [:csharpier]
-                                   ;; Python: Sort imports/fix, then format
-                                   :python [:ruff_fix :ruff_format]
-                                   ;; Web & Docs: The Daemonized Prettier
-                                   :javascript [:prettierd]
-                                   :typescript [:prettierd]
-                                   :css [:prettierd]
-                                   :markdown [:prettierd]
-                                   ;; Shell Scripts
-                                   :sh [:shfmt]
-                                   :bash [:shfmt]
-                                   ;; PowerShell (Runs `pwsh -c Invoke-Formatter`)
-                                   :ps1 [:powershell]}
+         ;; Only ruff exists on the workbench box.
+         :opts {:formatters_by_ft (if workbench?
+                                     {:python [:ruff_fix :ruff_format]}
+                                     {:lua [:stylua]
+                                      :fennel [:fnlfmt]
+                                      :cs [:csharpier]
+                                      ;; Python: Sort imports/fix, then format
+                                      :python [:ruff_fix :ruff_format]
+                                      ;; Web & Docs: The Daemonized Prettier
+                                      :javascript [:prettierd]
+                                      :typescript [:prettierd]
+                                      :css [:prettierd]
+                                      :markdown [:prettierd]
+                                      ;; Shell Scripts
+                                      :sh [:shfmt]
+                                      :bash [:shfmt]
+                                      ;; PowerShell (Runs `pwsh -c Invoke-Formatter`)
+                                      :ps1 [:powershell]})
                 ;; csharpier cold-starts a .NET process on every run (no
                 ;; persistent daemon conform can use easily) -- timed at
                 ;; ~440ms just for the CLI to format one file even outside

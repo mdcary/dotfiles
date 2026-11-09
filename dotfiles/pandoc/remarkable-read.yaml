@@ -1,4 +1,4 @@
-# pandoc -d remarkable -d remarkable-read doc.md -o doc.pdf
+# pandoc -d remarkable-read doc.md -o doc.pdf
 #
 # Reading layer on top of the `remarkable` preset — the counterpart to
 # `remarkable-article`. Same device page, same monochrome styling, but sized
@@ -10,8 +10,12 @@
 #   * the same e-ink image prep (trim, grayscale, flip dark screenshots)
 #
 # Roughly the page count of the bare `remarkable` preset, with the typography
-# of `remarkable-article`. Layer it *after* `remarkable` — later wins. Filters
-# do not merge, so both are listed here.
+# of `remarkable-article`. It pulls in `remarkable` itself via
+# `defaults:` below, and its own settings win over the base. Filters do not
+# merge, so both are listed here.
+
+defaults:
+  - remarkable
 
 filters:
   - mermaid.lua

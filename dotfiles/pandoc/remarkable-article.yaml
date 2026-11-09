@@ -1,4 +1,4 @@
-# pandoc -d remarkable -d remarkable-article article.md -o article.pdf
+# pandoc -d remarkable-article article.md -o article.pdf
 #
 # Reading-and-annotation layer on top of the `remarkable` preset. Meant for
 # long-form prose you'll read away from a screen and mark up with the Marker:
@@ -9,8 +9,11 @@
 #     appendix, with a tappable thumbnail ⇄ plate link in both directions
 #   * a serif face built for e-ink rather than the UI sans
 #
-# Layer it *after* `remarkable` — later defaults files win. Filters do not
-# merge, so both are listed here.
+# It pulls in `remarkable` itself via `defaults:` below, and its own settings
+# win over the base. Filters do not merge, so both are listed here.
+
+defaults:
+  - remarkable
 
 filters:
   - mermaid.lua

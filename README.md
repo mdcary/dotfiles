@@ -6,7 +6,7 @@ Configuration is split into modular files that are composed per-machine:
 
 - **`home-common.nix`** -- shared config (neovim, tmux, zsh, git base, SSH hosts, packages)
 - **`home-work.nix`** -- work-specific (WSL aliases, awscli, ODBC, MdClarity repos, git work identity)
-- **`home-personal.nix`** -- personal (git personal identity)
+- **`home-personal.nix`** -- personal (git/jj personal identity, mail tools, wrangler, DDEV, personal SSH hosts)
 
 The `flake.nix` defines three entry points:
 
@@ -62,7 +62,7 @@ home-manager switch --flake ~/.config/home-manager#cary@work
 This manages:
 - All shared config from `home-common.nix`
 - Work-specific: awscli SSO profiles, MdClarity repos, ODBC drivers, WSL aliases
-- Linux-only extras: podman, podman-compose, wslu
+- WSL extras: `docker` -> podman alias, wsl-open as the URL handler
 
 ### Linux (Personal)
 
@@ -81,7 +81,7 @@ Home Manager's module system merges attributes from all imported modules, so you
 
 ## Custom packages
 
-Packages not in nixpkgs are defined in `flake.nix` (e.g. `mkDuckDb`, `mkTaws`) or in `pkgs/` (e.g. `linear-cli`) and passed to modules via `extraSpecialArgs`.
+Packages not in nixpkgs live in `pkgs/` (e.g. `taws`, `linear-cli`) and are pulled in with `pkgs.callPackage` from the module that installs them. Packages from other flakes (llm-agents, gws-cli, ...) are passed to modules via `extraSpecialArgs`.
 
 ## Adding a neovim plugin
 
@@ -97,7 +97,7 @@ Neovim is bootstrapped from `dotfiles/nvim/init.lua`, which clones [hotpot.nvim]
 
 2. **Add any external binaries** the plugin needs (formatters, LSP servers, build tools) to `programs.neovim.extraPackages` in `home-common.nix`. Mason can install LSPs too, but pinning them here keeps them reproducible.
 
-3. **Apply the config** -- `home-manager switch ...` (or `darwin-rebuild switch ...`). The `home.activation.hotpotSync` hook in `home-common.nix` recompiles the Fennel against the new store path so changes pick up immediately.
+3. **Apply the config** -- only needed if you added binaries in step 2: `home-manager switch ...` (or `darwin-rebuild switch ...`). The Fennel itself is symlinked straight from this repo, and hotpot recompiles it when you save it in nvim; the `home.activation.hotpotSync` hook in `home-common.nix` also recompiles on each switch, which covers edits made outside nvim (e.g. `git pull`).
 
 4. **Install the plugin** -- open `nvim` and run `:Lazy sync` (or just relaunch; lazy auto-installs missing plugins on startup). The lockfile at `~/.local/state/nvim/lazy-lock.json` pins versions; commit-bump plugins with `:Lazy update`.
 
@@ -110,7 +110,7 @@ To remove a plugin, delete its spec and run `:Lazy clean`.
 nix flake update
 
 # Update a single input
-nix flake update claude-code
+nix flake update llm-agents
 
 # Then re-apply
 darwin-rebuild switch --flake ~/.config/home-manager#cary        # macOS

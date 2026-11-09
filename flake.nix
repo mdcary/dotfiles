@@ -1,7 +1,7 @@
 {
   description = "System and Home Manager configuration of cary";
 
-  # Pull prebuilt llm-agents.nix packages (showboat, etc.) from Numtide's cache
+  # Pull prebuilt llm-agents.nix packages (claude-code, codex) from Numtide's cache
   # instead of rebuilding from source. Only honored for trusted nix users — run
   # `echo 'trusted-users = root cary' | sudo tee -a /etc/nix/nix.conf` once and
   # restart nix-daemon, otherwise the daemon ignores these.
@@ -14,13 +14,12 @@
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
     # comby is broken in current nixos-unstable; pin to the last known-good commit.
     nixpkgs-comby.url = "github:NixOS/nixpkgs/a421ac6595024edcfbb1ef950a3712b89161c359";
-    claude-code.url = "github:sadjow/claude-code-nix";
-    codex-cli.url = "github:sadjow/codex-cli-nix";
     gws-cli.url = "github:googleworkspace/cli";
-    # Packages showboat (a Go binary) and ~130 other AI tools, built against
-    # its own pinned nixpkgs and served from cache.numtide.com — deliberately
-    # NOT following our nixpkgs, so we get the prebuilt binary instead of a
-    # source rebuild.
+    # Numtide's package set of AI coding agents; we take claude-code and codex
+    # from it.
+    # Built against its own pinned nixpkgs and served from cache.numtide.com —
+    # deliberately NOT following our nixpkgs, so we get the prebuilt binary
+    # instead of a source rebuild.
     llm-agents.url = "github:numtide/llm-agents.nix";
     home-manager = {
       url = "github:nix-community/home-manager";
@@ -32,23 +31,7 @@
     };
   };
 
-  outputs = { self, nixpkgs, nixpkgs-comby, home-manager, darwin, claude-code, codex-cli, gws-cli, llm-agents, ... }:
-    let
-      mkTaws = pkgs: pkgs.stdenv.mkDerivation rec {
-        pname = "taws";
-        version = "1.3.0-rc.7";
-        src = pkgs.fetchurl {
-          url = "https://github.com/huseyinbabal/taws/releases/download/v${version}/taws-x86_64-unknown-linux-musl.tar.gz";
-          hash = "sha256-14ahXuOUXHO6B7rSkdnfk0xwHB65WZ3UEly8Nqi1NUA=";
-        };
-        sourceRoot = ".";
-        installPhase = ''
-          mkdir -p $out/bin
-          cp taws $out/bin/
-          chmod +x $out/bin/taws
-        '';
-      };
-    in
+  outputs = { nixpkgs, nixpkgs-comby, home-manager, darwin, gws-cli, llm-agents, ... }:
     {
       # --- Linux (WSL) - Work ---
       homeConfigurations."cary@work" = let
@@ -56,8 +39,7 @@
       in home-manager.lib.homeManagerConfiguration {
         inherit pkgs;
         extraSpecialArgs = {
-          taws-bin = mkTaws pkgs;
-          inherit nixpkgs-comby claude-code codex-cli gws-cli llm-agents;
+          inherit nixpkgs-comby gws-cli llm-agents;
         };
         modules = [ ./home-common.nix ./home-work.nix ];
       };
@@ -68,7 +50,7 @@
       in home-manager.lib.homeManagerConfiguration {
         inherit pkgs;
         extraSpecialArgs = {
-          inherit nixpkgs-comby claude-code codex-cli gws-cli llm-agents;
+          inherit nixpkgs-comby gws-cli llm-agents;
         };
         modules = [ ./home-common.nix ./home-personal.nix ];
       };
@@ -100,7 +82,6 @@
               onActivation.extraFlags = [ "--force-cleanup" ];
               brews = [
                 "yt-dlp"
-                "deno"
               ];
               casks = [
                 "1password"
@@ -145,7 +126,7 @@
             home-manager.useGlobalPkgs = true;
             home-manager.useUserPackages = true;
             home-manager.extraSpecialArgs = {
-              inherit nixpkgs-comby claude-code codex-cli gws-cli llm-agents;
+              inherit nixpkgs-comby gws-cli llm-agents;
             };
             home-manager.users.cary = { imports = [ ./home-common.nix ./home-personal.nix ]; };
           }

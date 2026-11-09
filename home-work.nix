@@ -1,7 +1,8 @@
-{ config, pkgs, taws-bin, ... }:
+{ config, pkgs, ... }:
 
 let
   linear-cli = pkgs.callPackage ./pkgs/linear-cli.nix { };
+  taws = pkgs.callPackage ./pkgs/taws.nix { };
 in
 {
   home.sessionPath = [
@@ -69,24 +70,33 @@ in
       "profile prod" = mkProfile "prod" "096002140659" "dev-team-access";
       "profile datalake" = mkProfile "datalake" "096002140659" "datalake-read-all-access";
       "profile devops"     = mkProfile "devops" "789261558096" "AWSAdministratorAccess";
-      "profile vendorvpn"     = mkProfile "vpn" "497502377919" "AWSAdministratorAccess";
       "profile logs"      = mkProfile "logs" "616967731364" "AWSAdministratorAccess";
       "profile audit"      = mkProfile "audit" "718557712346" "AWSAdministratorAccess";
       "profile management"    = mkProfile "management" "637217033209" "AWSAdministratorAccess";
       "profile marketplace" = mkProfile "marketplace" "844968525216" "AWSAdministratorAccess";
+      "profile datamarketplace" = mkProfile "datamarketplace" "844968525216" "AWSAdministratorAccess";
       "profile omnipilot"    = mkProfile "omnipilot" "277207922039" "AWSAdministratorAccess";
       "profile omni"    = mkProfile "omni" "341796273866" "AWSAdministratorAccess";
+      "profile workbench"    = mkProfile "workbench" "442767638589" "AWSAdministratorAccess";
 
       # Special case for Bedrock (different role)
       "profile bedrock"    = mkProfile "bedrock" "367268567544" "llm-tool-access";
-
-      # The sso-session block (optional if using the flattened style above, but safe to keep)
-      "sso-session dev" = {
-        sso_region = sso_defaults.sso_region;
-        sso_start_url = sso_defaults.sso_start_url;
-        sso_registration_scopes = "sso:account:access";
-      };
     };
+  };
+
+  # The data workbench box's environment (Infrastructure:
+  # modules/workbench-stack/boxes.tf): sshd on the box's 127.0.0.1:2222, reached
+  # through an SSM tunnel. Start the box first: workbench-box start cary.
+  programs.ssh.settings."workbench-cary" = {
+    User = "workbench";
+    Port = 2222;
+    # TODO: ~/src/mdc/Infrastructure once cary/workbench merges.
+    ProxyCommand = "${config.home.homeDirectory}/trees/Infrastructure/workbench/scripts/workbench-box proxy cary %p";
+    IdentityFile = "~/.ssh/id_workbench";
+    IdentitiesOnly = true;
+    # Host keys are new on every box; the SSM tunnel authenticates the host.
+    StrictHostKeyChecking = "no";
+    UserKnownHostsFile = "/dev/null";
   };
 
   programs.mr = {
@@ -116,6 +126,8 @@ in
   };
 
   programs.zsh.shellAliases = {
+    docker = "podman";
+
     # WSL Windows aliases
     code = "\"/mnt/c/Users/CaryLee/AppData/Local/Programs/Microsoft VS Code/bin/code\"";
     explorer = "/mnt/c/Windows/explorer.exe";
@@ -231,7 +243,7 @@ in
     d2
     librsvg
     unixodbcDrivers.msodbcsql17
-    taws-bin
+    taws
     stu
     azure-cli
     sqlcmd
@@ -240,7 +252,7 @@ in
     dolt
 
     dotnet-sdk_10
-    csharp-ls
+    ncdu
   ];
 
   home.file = {
@@ -248,10 +260,6 @@ in
       [ODBC Driver 17 for SQL Server]
       Description=Microsoft ODBC Driver 17 for SQL Server
       Driver=${pkgs.unixodbcDrivers.msodbcsql17}/lib/libmsodbcsql-17.7.so.1.1
-
-      [ODBC Driver 18 for SQL Server]
-      Description=Microsoft ODBC Driver 18 for SQL Server
-      Driver=${pkgs.unixodbcDrivers.msodbcsql17}/lib/libmsodbcsql-18.1.so.1.1
     '';
   };
 
@@ -268,8 +276,10 @@ in
     );
   '';
 
+  # No global LD_LIBRARY_PATH for unixodbc: every process would inherit nix's
+  # libs, including non-nix binaries. pyodbc work gets it from the
+  # dev-envs/monorepo shell instead.
   home.sessionVariables = {
-    LD_LIBRARY_PATH = "${pkgs.unixodbc}/lib";
     ODBCSYSINI = "${config.home.homeDirectory}/.config/odbcinst";
   };
 }

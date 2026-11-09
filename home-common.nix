@@ -1,4 +1,4 @@
-{ config, pkgs, lib, nixpkgs-comby, claude-code, codex-cli, gws-cli, llm-agents, ... }:
+{ config, pkgs, lib, nixpkgs-comby, gws-cli, llm-agents, ... }:
 
 let
   # `pkgs.system` is deprecated; use the stdenv platform string.
@@ -28,10 +28,10 @@ in
       config.lib.file.mkOutOfStoreSymlink "${repoDir}/dotfiles/pandoc/remarkable.typst";
     "pandoc/defaults/remarkable.yaml".source =
       config.lib.file.mkOutOfStoreSymlink "${repoDir}/dotfiles/pandoc/remarkable.yaml";
-    # Layered on top for long-form reading: `-d remarkable -d remarkable-article`.
+    # Long-form reading; pulls in `remarkable` itself: `-d remarkable-article`.
     "pandoc/defaults/remarkable-article.yaml".source =
       config.lib.file.mkOutOfStoreSymlink "${repoDir}/dotfiles/pandoc/remarkable-article.yaml";
-    # Layered on top for reading without annotating: `-d remarkable -d remarkable-read`.
+    # Reading without annotating; pulls in `remarkable` itself: `-d remarkable-read`.
     "pandoc/defaults/remarkable-read.yaml".source =
       config.lib.file.mkOutOfStoreSymlink "${repoDir}/dotfiles/pandoc/remarkable-read.yaml";
     "pandoc/filters/mermaid.lua".source =
@@ -47,7 +47,7 @@ in
   programs.lazysql.enable = true;
   programs.uv.enable = true;
   programs.codex.enable = true;
-  programs.codex.package = codex-cli.packages.${system}.default;
+  programs.codex.package = llm-agents.packages.${system}.codex;
 
   programs.pandoc = {
     enable = true;
@@ -150,15 +150,12 @@ in
     syntaxHighlighting.enable = true;
 
     shellAliases = {
-      docker = "podman";
       vim = "nvim";
       vi = "nvim";
       yolo = "claude --dangerously-skip-permissions";
     };
 
     initContent = ''
-      export EDITOR=nvim
-
       # Only auto-attach if we are NOT already in tmux and it's an interactive shell
       if [ -z "$TMUX" ] && [ -n "$PS1" ]; then
         # If we explicitly set TMUX_SESSION, use that, otherwise default to "main"
@@ -177,7 +174,6 @@ in
     # command drops fzf's history widget only — Ctrl-T and Alt-C are untouched.
     historyWidget.command = "";
   };
-  programs.antigravity-cli.enable = true; # Changed from programs.gemini-cli.enable
   programs.zoxide.enable = true;
   programs.eza.enable = true;
   programs.starship.enable = true;
@@ -331,16 +327,19 @@ in
     ];
   };
 
-  # Recompile fennel config after each rebuild. The .fnl sources live in
-  # /nix/store with mtime=epoch-0, so hotpot's mtime-based sync would
-  # never notice a change without an explicit `force`.
+  # Recompile the fennel config after each rebuild. Hotpot only syncs on its
+  # first boot and when a .fnl file is saved *inside* nvim, so edits that
+  # arrive any other way (git pull, another editor, an agent) would otherwise
+  # leave stale compiled lua behind. The .fnl files are real files in this
+  # repo (out-of-store symlink above), so hotpot's mtime check is accurate and
+  # a plain sync recompiles only what changed.
   home.activation.hotpotSync =
     lib.hm.dag.entryAfter [ "linkGeneration" ] ''
       HOTPOT_DIR="$HOME/.local/share/nvim/lazy/hotpot.nvim"
       NVIM_CONFIG="$HOME/.config/nvim"
       if [ -d "$HOTPOT_DIR" ] && [ -e "$NVIM_CONFIG/init.lua" ]; then
         ${config.programs.neovim.finalPackage}/bin/nvim --headless \
-          "+Hotpot sync force context=$NVIM_CONFIG" \
+          "+Hotpot sync context=$NVIM_CONFIG" \
           "+qa" 2>&1 | sed 's/^/[hotpot-sync] /' || true
       else
         echo "[hotpot-sync] hotpot not bootstrapped yet; skipping"
@@ -383,7 +382,8 @@ in
         IdentitiesOnly = true;
       };
 
-      "codeberg.org" = {
+      # 1Password's agent socket only exists on macOS.
+      "codeberg.org" = lib.mkIf pkgs.stdenv.isDarwin {
         HostName = "codeberg.org";
         IdentityAgent = "\"~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock\"";
       };
@@ -424,7 +424,6 @@ in
   home.stateVersion = "26.05";
 
   home.packages = with pkgs; [
-    hello
     ripgrep
     bat
     fd
@@ -433,7 +432,6 @@ in
     just
     podman
     podman-compose
-    sl
     cloudflared
 
     nodejs
@@ -450,6 +448,7 @@ in
     unzip
     zip
     perl
+    glow
 
     google-cloud-sdk
     ghostscript
@@ -477,7 +476,6 @@ in
     # System utilities
     pwgen
     watch
-    diskus
     nmap
 
     tree
@@ -495,17 +493,9 @@ in
 
     gws-cli.packages.${system}.default
 
-    claude-code.packages.${system}.default
+    llm-agents.packages.${system}.claude-code
 
     (pkgs.callPackage ./pkgs/ferrite.nix { })
-
-    # simonw's "executable document" demo tool — a Go binary, pulled prebuilt
-    # from numtide/llm-agents.nix (cache.numtide.com) rather than rebuilt here.
-    llm-agents.packages.${system}.showboat
-
-    # simonw/rodney: Chrome automation CLI. Not in llm-agents.nix, so built
-    # from source here and wrapped to use nixpkgs chromium at runtime.
-    (pkgs.callPackage ./pkgs/rodney.nix { })
   ];
 
   fonts.fontconfig.enable = true;
@@ -542,10 +532,6 @@ in
         firewall_driver = "none"
       '';
     };
-  };
-
-  home.sessionVariables = {
-    EDITOR = "nvim";
   };
 
   programs.home-manager.enable = true;

@@ -2,7 +2,7 @@
 #
 # reMarkable Paper Pure preset: device-native 4:3 page, monochrome styling,
 # mermaid fences rendered to images. Overrides the global ~/.config/pandoc
-# defaults (which target xelatex/letter), so this is self-contained.
+# defaults (which target typst/letter), so this is self-contained.
 
 # `-citations`: nothing here ever carries a bibliography, and scraped prose is
 # full of `@handle` mentions that pandoc would otherwise read as citation keys —

@@ -8,7 +8,7 @@ let
 in
 {
   home.username = "cary";
-  home.homeDirectory = if pkgs.stdenv.isDarwin then "/Users/cary" else "/home/cary";
+  home.homeDirectory = if pkgs.stdenv.hostPlatform.isDarwin then "/Users/cary" else "/home/cary";
   home.sessionPath = [
     "$HOME/.local/bin"
     "$HOME/.cache/.bun/bin"
@@ -52,24 +52,17 @@ in
   programs.pandoc = {
     enable = true;
 
+    # typst rather than xelatex, so plain `pandoc x.md -o x.pdf` doesn't need
+    # a ~600 MiB TeX install. These are the typst template's variable names
+    # (`pandoc --print-default-template=typst`), not LaTeX's.
     defaults = {
-      pdf-engine = "xelatex";
+      pdf-engine = "typst";
       variables = {
         mainfont = "DejaVu Serif";
-        sansfont = "DejaVu Sans";
-        monofont = "FiraCode Nerd Font";
         fontsize = "11pt";
-
-        geometry = [
-          "margin=1in"
-          "heightrounded"
-        ];
-
-        colorlinks = true;
-        linkcolor = "blue";
-        urlcolor = "blue";
-
-        numbersections = true;
+        papersize = "us-letter";
+        margin = { x = "1in"; y = "1in"; };
+        section-numbering = "1.1";
       };
     };
   };
@@ -341,6 +334,7 @@ in
         ${config.programs.neovim.finalPackage}/bin/nvim --headless \
           "+Hotpot sync context=$NVIM_CONFIG" \
           "+qa" 2>&1 | sed 's/^/[hotpot-sync] /' || true
+        echo
       else
         echo "[hotpot-sync] hotpot not bootstrapped yet; skipping"
       fi
@@ -350,7 +344,7 @@ in
     enable = true;
     enableDefaultConfig = false;
     extraConfig = ''
-      ${if pkgs.stdenv.isDarwin then ''
+      ${if pkgs.stdenv.hostPlatform.isDarwin then ''
         IdentityAgent "~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
         Include ~/.orbstack/ssh/config
       '' else ""}
@@ -383,7 +377,7 @@ in
       };
 
       # 1Password's agent socket only exists on macOS.
-      "codeberg.org" = lib.mkIf pkgs.stdenv.isDarwin {
+      "codeberg.org" = lib.mkIf pkgs.stdenv.hostPlatform.isDarwin {
         HostName = "codeberg.org";
         IdentityAgent = "\"~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock\"";
       };
@@ -436,8 +430,6 @@ in
 
     nodejs
 
-    texlive.combined.scheme-small
-
     ffmpeg
 
     imagemagick
@@ -481,7 +473,12 @@ in
     tree
     pdftk
 
-    google-fonts
+    # Just the families the pandoc/typst presets and reMarkable skill name,
+    # instead of all of google-fonts (2.3 GiB).
+    inter
+    literata
+    source-serif
+    atkinson-hyperlegible
 
     pkgs.nerd-fonts.fira-code
 
@@ -501,7 +498,7 @@ in
   fonts.fontconfig.enable = true;
 
   home.file = {
-    ".config/containers/policy.json" = lib.mkIf pkgs.stdenv.isLinux {
+    ".config/containers/policy.json" = lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
       text = ''
       {
         "default": [
@@ -525,13 +522,22 @@ in
     # netavark's rules. Trade-off: no inter-network isolation between podman
     # networks, and rootful podman would lose egress NAT (we run rootless only).
     # force: this file replaced a hand-written copy of the same content.
-    ".config/containers/containers.conf" = lib.mkIf pkgs.stdenv.isLinux {
+    ".config/containers/containers.conf" = lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
       force = true;
       text = ''
         [network]
         firewall_driver = "none"
       '';
     };
+  };
+
+  # Weekly: drop home-manager generations (and other profiles of this user)
+  # older than 14 days, then collect garbage. Runs as a systemd user timer on
+  # Linux and a launchd agent on macOS.
+  nix.gc = {
+    automatic = true;
+    dates = "weekly";
+    options = "--delete-older-than 14d";
   };
 
   programs.home-manager.enable = true;

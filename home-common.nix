@@ -479,6 +479,8 @@ in
     literata
     source-serif
     atkinson-hyperlegible
+    # Metric-compatible Calibri stand-in; the board-deck SVGs name Carlito.
+    carlito
 
     pkgs.nerd-fonts.fira-code
 

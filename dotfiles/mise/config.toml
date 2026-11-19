@@ -1,0 +1,12 @@
+# Fast-moving developer tools. These are deliberately outside Nix so their
+# release cadence is not coupled to the Home Manager flake.
+#
+# Run `mise install` after applying Home Manager. Project-local mise.toml files
+# can override these versions when a repository needs something different.
+
+[tools]
+node = "24.22.2"
+bun = "1.4.4"
+deno = "2.9.8"
+duckdb = "2.0.0"
+claude = "latest"

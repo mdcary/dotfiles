@@ -117,3 +117,18 @@ darwin-rebuild switch --flake ~/.config/home-manager#cary        # macOS
 home-manager switch --flake ~/.config/home-manager#cary@work     # WSL2
 home-manager switch --flake ~/.config/home-manager#cary@home     # Linux personal
 ```
+
+### Fast-moving developer tools
+
+Node, Bun, Deno, DuckDB, and Claude Code are managed by `mise`, not Nix. The
+global selections are tracked in `dotfiles/mise/config.toml`; install them
+after applying Home Manager:
+
+```sh
+mise install
+mise doctor
+```
+
+Project-local `mise.toml` files take precedence over the global selections.
+Use `mise use --pin TOOL@VERSION` when changing a version so the resolved
+version is recorded deliberately.

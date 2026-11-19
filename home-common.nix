@@ -42,7 +42,6 @@ in
       config.lib.file.mkOutOfStoreSymlink "${repoDir}/dotfiles/pandoc/drop-empty-links.lua";
   };
 
-  programs.bun.enable = true;
   programs.lazyworktree.enable = true;
   programs.lazysql.enable = true;
   programs.uv.enable = true;
@@ -149,6 +148,13 @@ in
     };
 
     initContent = ''
+      # Fast-moving developer tools are managed by mise, whose global config is
+      # linked from dotfiles/mise/config.toml below. Keep this conditional so a
+      # first login still works before Home Manager has installed mise.
+      if command -v mise >/dev/null 2>&1; then
+        eval "$(mise activate zsh)"
+      fi
+
       # Only auto-attach if we are NOT already in tmux and it's an interactive shell
       if [ -z "$TMUX" ] && [ -n "$PS1" ]; then
         # If we explicitly set TMUX_SESSION, use that, otherwise default to "main"
@@ -418,6 +424,10 @@ in
   home.stateVersion = "26.05";
 
   home.packages = with pkgs; [
+    # Bootstrap for fast-moving developer tools. The selected tools themselves
+    # live in dotfiles/mise/config.toml rather than in the Nix store.
+    mise
+
     ripgrep
     bat
     fd
@@ -427,8 +437,6 @@ in
     podman
     podman-compose
     cloudflared
-
-    nodejs
 
     ffmpeg
 
@@ -442,13 +450,13 @@ in
     perl
     glow
 
+    # Keep the large cloud SDK in Nix for now; it is used across work shells.
     google-cloud-sdk
     ghostscript
 
     babashka
     clojure
     leiningen
-    deno
     clj-kondo
 
     # Document & media utilities
@@ -484,7 +492,6 @@ in
 
     pkgs.nerd-fonts.fira-code
 
-    duckdb
     sqlite
 
     # comby is broken in current nixos-unstable; pull it from a pinned nixpkgs commit.
@@ -492,12 +499,15 @@ in
 
     gws-cli.packages.${system}.default
 
-    llm-agents.packages.${system}.claude-code
-
     (pkgs.callPackage ./pkgs/ferrite.nix { })
   ];
 
   fonts.fontconfig.enable = true;
+
+  # Keep this editable in the repository. `mise install` reads the selected
+  # versions but does not rewrite the file; updates are deliberate commits.
+  xdg.configFile."mise/config.toml".source =
+    config.lib.file.mkOutOfStoreSymlink "${repoDir}/dotfiles/mise/config.toml";
 
   home.file = {
     ".config/containers/policy.json" = lib.mkIf pkgs.stdenv.hostPlatform.isLinux {

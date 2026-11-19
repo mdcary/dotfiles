@@ -8,5 +8,10 @@
 node = "24.22.2"
 bun = "1.4.4"
 deno = "2.9.8"
-duckdb = "2.0.0"
 claude = "latest"
+# The bundled aqua recipe currently misidentifies DuckDB's release assets.
+# Select the CLI archive explicitly; DuckDB names these linux-amd64,
+# linux-arm64, osx-amd64, and osx-arm64.
+[tools."github:duckdb/duckdb"]
+version = "2.0.0"
+asset_pattern = 'duckdb-cli-{{ os(macos="osx") }}-{{ arch(x64="amd64", arm64="arm64") }}.tar.gz'

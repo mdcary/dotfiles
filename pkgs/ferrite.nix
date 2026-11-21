@@ -9,7 +9,11 @@
 , wayland
 , vulkan-loader
 , libGL
-, xorg
+, libx11
+, libxcursor
+, libxi
+, libxrandr
+, libxcb
 , stdenv
 }:
 
@@ -49,11 +53,11 @@ let
     libGL
     libxkbcommon
     wayland
-    xorg.libX11
-    xorg.libXcursor
-    xorg.libXi
-    xorg.libXrandr
-    xorg.libxcb
+    libx11
+    libxcursor
+    libxi
+    libxrandr
+    libxcb
   ];
 in
 stdenvNoCC.mkDerivation {
@@ -64,15 +68,15 @@ stdenvNoCC.mkDerivation {
 
   sourceRoot = ".";
 
-  nativeBuildInputs = lib.optionals stdenv.isLinux [ autoPatchelfHook makeWrapper ];
+  nativeBuildInputs = lib.optionals stdenv.hostPlatform.isLinux [ autoPatchelfHook makeWrapper ];
 
-  buildInputs = lib.optionals stdenv.isLinux [ fontconfig zlib stdenv.cc.cc.lib ];
+  buildInputs = lib.optionals stdenv.hostPlatform.isLinux [ fontconfig zlib stdenv.cc.cc.lib ];
 
   dontConfigure = true;
   dontBuild = true;
 
   installPhase =
-    if stdenv.isLinux then ''
+    if stdenv.hostPlatform.isLinux then ''
       runHook preInstall
       install -Dm755 ferrite $out/bin/ferrite
       runHook postInstall
@@ -84,7 +88,7 @@ stdenvNoCC.mkDerivation {
       runHook postInstall
     '';
 
-  postFixup = lib.optionalString stdenv.isLinux ''
+  postFixup = lib.optionalString stdenv.hostPlatform.isLinux ''
     wrapProgram $out/bin/ferrite \
       --prefix LD_LIBRARY_PATH : ${lib.makeLibraryPath runtimeLibs}
   '';

@@ -1,4 +1,4 @@
-{ config, pkgs, lib, nixpkgs-comby, claude-code, codex-cli, gws-cli, llm-agents, ... }:
+{ config, pkgs, lib, nixpkgs-comby, gws-cli, llm-agents, ... }:
 
 let
   # `pkgs.system` is deprecated; use the stdenv platform string.
@@ -8,7 +8,7 @@ let
 in
 {
   home.username = "cary";
-  home.homeDirectory = if pkgs.stdenv.isDarwin then "/Users/cary" else "/home/cary";
+  home.homeDirectory = if pkgs.stdenv.hostPlatform.isDarwin then "/Users/cary" else "/home/cary";
   home.sessionPath = [
     "$HOME/.local/bin"
     "$HOME/.cache/.bun/bin"
@@ -28,9 +28,12 @@ in
       config.lib.file.mkOutOfStoreSymlink "${repoDir}/dotfiles/pandoc/remarkable.typst";
     "pandoc/defaults/remarkable.yaml".source =
       config.lib.file.mkOutOfStoreSymlink "${repoDir}/dotfiles/pandoc/remarkable.yaml";
-    # Layered on top for long-form reading: `-d remarkable -d remarkable-article`.
+    # Long-form reading; pulls in `remarkable` itself: `-d remarkable-article`.
     "pandoc/defaults/remarkable-article.yaml".source =
       config.lib.file.mkOutOfStoreSymlink "${repoDir}/dotfiles/pandoc/remarkable-article.yaml";
+    # Reading without annotating; pulls in `remarkable` itself: `-d remarkable-read`.
+    "pandoc/defaults/remarkable-read.yaml".source =
+      config.lib.file.mkOutOfStoreSymlink "${repoDir}/dotfiles/pandoc/remarkable-read.yaml";
     "pandoc/filters/mermaid.lua".source =
       config.lib.file.mkOutOfStoreSymlink "${repoDir}/dotfiles/pandoc/mermaid.lua";
     "pandoc/filters/figure-appendix.lua".source =
@@ -59,34 +62,26 @@ in
                    "--interactive"]}}}
   '';
 
-  programs.bun.enable = true;
   programs.lazyworktree.enable = true;
   programs.lazysql.enable = true;
   programs.uv.enable = true;
   programs.codex.enable = true;
-  programs.codex.package = codex-cli.packages.${system}.default;
+  programs.codex.package = llm-agents.packages.${system}.codex;
 
   programs.pandoc = {
     enable = true;
 
+    # typst rather than xelatex, so plain `pandoc x.md -o x.pdf` doesn't need
+    # a ~600 MiB TeX install. These are the typst template's variable names
+    # (`pandoc --print-default-template=typst`), not LaTeX's.
     defaults = {
-      pdf-engine = "xelatex";
+      pdf-engine = "typst";
       variables = {
         mainfont = "DejaVu Serif";
-        sansfont = "DejaVu Sans";
-        monofont = "FiraCode Nerd Font";
         fontsize = "11pt";
-
-        geometry = [
-          "margin=1in"
-          "heightrounded"
-        ];
-
-        colorlinks = true;
-        linkcolor = "blue";
-        urlcolor = "blue";
-
-        numbersections = true;
+        papersize = "us-letter";
+        margin = { x = "1in"; y = "1in"; };
+        section-numbering = "1.1";
       };
     };
   };
@@ -167,14 +162,18 @@ in
     syntaxHighlighting.enable = true;
 
     shellAliases = {
-      docker = "podman";
       vim = "nvim";
       vi = "nvim";
       yolo = "claude --dangerously-skip-permissions";
     };
 
     initContent = ''
-      export EDITOR=nvim
+      # Fast-moving developer tools are managed by mise, whose global config is
+      # linked from dotfiles/mise/config.toml below. Keep this conditional so a
+      # first login still works before Home Manager has installed mise.
+      if command -v mise >/dev/null 2>&1; then
+        eval "$(mise activate zsh)"
+      fi
 
       # Only auto-attach if we are NOT already in tmux and it's an interactive shell
       if [ -z "$TMUX" ] && [ -n "$PS1" ]; then
@@ -194,7 +193,6 @@ in
     # command drops fzf's history widget only — Ctrl-T and Alt-C are untouched.
     historyWidget.command = "";
   };
-  programs.antigravity-cli.enable = true; # Changed from programs.gemini-cli.enable
   programs.zoxide.enable = true;
   programs.eza.enable = true;
   programs.starship.enable = true;
@@ -368,17 +366,21 @@ in
     ];
   };
 
-  # Recompile fennel config after each rebuild. The .fnl sources live in
-  # /nix/store with mtime=epoch-0, so hotpot's mtime-based sync would
-  # never notice a change without an explicit `force`.
+  # Recompile the fennel config after each rebuild. Hotpot only syncs on its
+  # first boot and when a .fnl file is saved *inside* nvim, so edits that
+  # arrive any other way (git pull, another editor, an agent) would otherwise
+  # leave stale compiled lua behind. The .fnl files are real files in this
+  # repo (out-of-store symlink above), so hotpot's mtime check is accurate and
+  # a plain sync recompiles only what changed.
   home.activation.hotpotSync =
     lib.hm.dag.entryAfter [ "linkGeneration" ] ''
       HOTPOT_DIR="$HOME/.local/share/nvim/lazy/hotpot.nvim"
       NVIM_CONFIG="$HOME/.config/nvim"
       if [ -d "$HOTPOT_DIR" ] && [ -e "$NVIM_CONFIG/init.lua" ]; then
         ${config.programs.neovim.finalPackage}/bin/nvim --headless \
-          "+Hotpot sync force context=$NVIM_CONFIG" \
+          "+Hotpot sync context=$NVIM_CONFIG" \
           "+qa" 2>&1 | sed 's/^/[hotpot-sync] /' || true
+        echo
       else
         echo "[hotpot-sync] hotpot not bootstrapped yet; skipping"
       fi
@@ -388,7 +390,7 @@ in
     enable = true;
     enableDefaultConfig = false;
     extraConfig = ''
-      ${if pkgs.stdenv.isDarwin then ''
+      ${if pkgs.stdenv.hostPlatform.isDarwin then ''
         IdentityAgent "~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
         Include ~/.orbstack/ssh/config
       '' else ""}
@@ -420,7 +422,8 @@ in
         IdentitiesOnly = true;
       };
 
-      "codeberg.org" = {
+      # 1Password's agent socket only exists on macOS.
+      "codeberg.org" = lib.mkIf pkgs.stdenv.hostPlatform.isDarwin {
         HostName = "codeberg.org";
         IdentityAgent = "\"~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock\"";
       };
@@ -460,7 +463,10 @@ in
   home.stateVersion = "26.05";
 
   home.packages = with pkgs; [
-    hello
+    # Bootstrap for fast-moving developer tools. The selected tools themselves
+    # live in dotfiles/mise/config.toml rather than in the Nix store.
+    mise
+
     ripgrep
     bat
     fd
@@ -469,12 +475,7 @@ in
     just
     podman
     podman-compose
-    sl
     cloudflared
-
-    nodejs_26
-
-    texlive.combined.scheme-small
 
     ffmpeg
 
@@ -486,7 +487,9 @@ in
     unzip
     zip
     perl
+    glow
 
+    # Keep the large cloud SDK in Nix for now; it is used across work shells.
     google-cloud-sdk
     ghostscript
 
@@ -496,7 +499,6 @@ in
     # `java`/`javac` — /usr/bin/java is only Apple's "install a JRE" stub.
     clojure
     leiningen
-    deno
     clj-kondo
 
     # Document & media utilities
@@ -516,17 +518,22 @@ in
     # System utilities
     pwgen
     watch
-    diskus
     nmap
 
     tree
     pdftk
 
-    google-fonts
+    # Just the families the pandoc/typst presets and reMarkable skill name,
+    # instead of all of google-fonts (2.3 GiB).
+    inter
+    literata
+    source-serif
+    atkinson-hyperlegible
+    # Metric-compatible Calibri stand-in; the board-deck SVGs name Carlito.
+    carlito
 
     pkgs.nerd-fonts.fira-code
 
-    duckdb
     sqlite
 
     # comby is broken in current nixos-unstable; pull it from a pinned nixpkgs commit.
@@ -534,33 +541,18 @@ in
 
     gws-cli.packages.${system}.default
 
-    claude-code.packages.${system}.default
-
     (pkgs.callPackage ./pkgs/ferrite.nix { })
-
-    # simonw's "executable document" demo tool — a Go binary, pulled prebuilt
-    # from numtide/llm-agents.nix (cache.numtide.com) rather than rebuilt here.
-    llm-agents.packages.${system}.showboat
-
-    # simonw/rodney: Chrome automation CLI. Not in llm-agents.nix, so built
-    # from source here and wrapped to use a Chrome binary at runtime.
-    #
-    # nixpkgs chromium is Linux-only, so on darwin we point at the Chrome
-    # that's already installed under /Applications rather than pulling
-    # nixpkgs google-chrome (~150MB, and lib.getExe can't find its binary —
-    # the darwin build ships an .app bundle with no meta.mainProgram).
-    (pkgs.callPackage ./pkgs/rodney.nix {
-      chromeBin =
-        if pkgs.stdenv.isDarwin
-        then "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
-        else lib.getExe pkgs.chromium;
-    })
   ];
 
   fonts.fontconfig.enable = true;
 
+  # Keep this editable in the repository. `mise install` reads the selected
+  # versions but does not rewrite the file; updates are deliberate commits.
+  xdg.configFile."mise/config.toml".source =
+    config.lib.file.mkOutOfStoreSymlink "${repoDir}/dotfiles/mise/config.toml";
+
   home.file = {
-    ".config/containers/policy.json" = lib.mkIf pkgs.stdenv.isLinux {
+    ".config/containers/policy.json" = lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
       text = ''
       {
         "default": [
@@ -584,7 +576,7 @@ in
     # netavark's rules. Trade-off: no inter-network isolation between podman
     # networks, and rootful podman would lose egress NAT (we run rootless only).
     # force: this file replaced a hand-written copy of the same content.
-    ".config/containers/containers.conf" = lib.mkIf pkgs.stdenv.isLinux {
+    ".config/containers/containers.conf" = lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
       force = true;
       text = ''
         [network]
@@ -593,8 +585,13 @@ in
     };
   };
 
-  home.sessionVariables = {
-    EDITOR = "nvim";
+  # Weekly: drop home-manager generations (and other profiles of this user)
+  # older than 14 days, then collect garbage. Runs as a systemd user timer on
+  # Linux and a launchd agent on macOS.
+  nix.gc = {
+    automatic = true;
+    dates = "weekly";
+    options = "--delete-older-than 14d";
   };
 
   programs.home-manager.enable = true;

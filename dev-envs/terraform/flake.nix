@@ -34,6 +34,12 @@
                 opentofu
               ];
 
+              # Nix's python setup hook exports checkov's deps on PYTHONPATH, which outranks
+              # uv's environments (e.g. its python-hcl2 0.4.3 shadows 8.x). checkov's wrapper
+              # carries its own paths.
+              shellHook = ''
+                unset PYTHONPATH
+              '';
             };
           });
     };

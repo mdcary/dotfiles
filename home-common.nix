@@ -473,8 +473,6 @@ in
     jq
     sesh
     just
-    podman
-    podman-compose
     cloudflared
 
     ffmpeg
@@ -542,6 +540,12 @@ in
     gws-cli.packages.${system}.default
 
     (pkgs.callPackage ./pkgs/ferrite.nix { })
+  ]
+  # Rootless podman (configured via ~/.config/containers below) is for the
+  # Linux boxes only; the Mac uses OrbStack.
+  ++ lib.optionals pkgs.stdenv.hostPlatform.isLinux [
+    pkgs.podman
+    pkgs.podman-compose
   ];
 
   fonts.fontconfig.enable = true;

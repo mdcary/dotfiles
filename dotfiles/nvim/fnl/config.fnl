@@ -70,6 +70,18 @@
 ;; are skipped there with `:cond (not workbench?)`.
 (local workbench? (not= nil (os.getenv :WORKBENCH_HANDLE)))
 
+;; C# tooling (treesitter parser, roslyn_ls, csharpier) is for the Linux/WSL
+;; work box only. The Mac doesn't get csharpier or any .NET from nix, so skip
+;; it all there rather than half-configuring it.
+(local csharp? (and (not workbench?) (= 0 (vim.fn.has :mac))))
+(fn csharp-only [xs] (if csharp? xs []))
+(fn concat [...]
+  (let [out []]
+    (each [_ xs (ipairs [...])]
+      (each [_ x (ipairs xs)]
+        (table.insert out x)))
+    out))
+
 (local plugins
        [;; LISP COMPILER: hotpot.nvim (already loaded by init.lua;
         ;; listed here so Lazy can manage updates)
@@ -116,8 +128,9 @@
                          parsers (if workbench?
                                      [:lua :python :markdown :sql :json :yaml
                                       :toml :bash]
-                                     [:lua :fennel :python :javascript :markdown
-                                      :c :c_sharp :clojure])
+                                     (concat [:lua :fennel :python :javascript
+                                              :markdown :c :clojure]
+                                             (csharp-only [:c_sharp])))
                          ;; Filetypes, for the FileType autocmd below --
                          ;; `c_sharp`'s filetype is `cs`, and `bash`'s is `sh`;
                          ;; everything else here happens to match its parser
@@ -125,8 +138,9 @@
                          filetypes (if workbench?
                                        [:lua :python :markdown :sql :json :yaml
                                         :toml :sh]
-                                       [:lua :fennel :python :javascript
-                                        :markdown :c :cs :clojure])]
+                                       (concat [:lua :fennel :python :javascript
+                                                :markdown :c :clojure]
+                                               (csharp-only [:cs])))]
                      ;; 1. Download parsers (Replaces `ensure_installed`)
                      ;; Note: This safely acts as a no-op if they are already installed.
                      (ts.install parsers)
@@ -193,7 +207,8 @@
                          mason-managed (if workbench? []
                                            [:lua_ls :fennel_language_server])
                          servers (if workbench? [:pyright :ruff]
-                                     [:lua_ls :fennel_language_server :roslyn_ls])]
+                                     (concat [:lua_ls :fennel_language_server]
+                                             (csharp-only [:roslyn_ls])))]
                      (mason.setup)
                      ;; mason-lspconfig defaults to automatic_enable = true,
                      ;; which auto-enables every *installed* mason LSP
@@ -218,33 +233,34 @@
                      ;; -- and for a real branch diff that touches N project
                      ;; roots, N+ duplicate servers at once, which is what
                      ;; crashed nvim in the first place.
-                     (let [default-root-dir (. (. vim.lsp.config :roslyn_ls) :root_dir)]
-                       (vim.lsp.config :roslyn_ls
-                                       {:root_dir (fn [bufnr on_dir]
-                                                    (let [bufname (vim.api.nvim_buf_get_name bufnr)]
-                                                      (when (and (= (. vim.bo bufnr :buftype)
-                                                                     "")
-                                                                 (not (bufname:find "://")))
-                                                        (default-root-dir bufnr on_dir))))}))
-                     ;; See the note on `servers` above: run under the
-                     ;; non-nix .NET runtime, not nix's dotnet-sdk. One-time
-                     ;; manual setup this depends on:
-                     ;;   bash <(curl -fsSL https://dot.net/v1/dotnet-install.sh) \
-                     ;;     --channel 10.0 --install-dir ~/.local/dotnet-msft
-                     ;;   DOTNET_ROOT=~/.local/dotnet-msft ~/.local/dotnet-msft/dotnet \
-                     ;;     tool install --global roslyn-language-server --prerelease
-                     ;; Resolved by fixed path, not exepath/PATH search: mason's
-                     ;; bin dir comes earlier on PATH and would otherwise win
-                     ;; with its own (broken, see above) roslyn-language-server.
-                     (let [msft-dotnet (vim.fn.expand "~/.local/dotnet-msft/dotnet")
-                           roslyn-bin (vim.fn.expand "~/.dotnet/tools/roslyn-language-server")]
-                       (when (and (= 1 (vim.fn.executable msft-dotnet))
-                                  (= 1 (vim.fn.executable roslyn-bin)))
+                     (when csharp?
+                       (let [default-root-dir (. (. vim.lsp.config :roslyn_ls) :root_dir)]
                          (vim.lsp.config :roslyn_ls
-                                         {:cmd [msft-dotnet
-                                                (.. (vim.fn.resolve roslyn-bin) ".dll")
-                                                :--stdio]
-                                          :cmd_env {:DOTNET_ROOT (vim.fn.expand "~/.local/dotnet-msft")}})))
+                                         {:root_dir (fn [bufnr on_dir]
+                                                      (let [bufname (vim.api.nvim_buf_get_name bufnr)]
+                                                        (when (and (= (. vim.bo bufnr :buftype)
+                                                                       "")
+                                                                   (not (bufname:find "://")))
+                                                          (default-root-dir bufnr on_dir))))}))
+                       ;; See the note on `servers` above: run under the
+                       ;; non-nix .NET runtime, not nix's dotnet-sdk. One-time
+                       ;; manual setup this depends on:
+                       ;;   bash <(curl -fsSL https://dot.net/v1/dotnet-install.sh) \
+                       ;;     --channel 10.0 --install-dir ~/.local/dotnet-msft
+                       ;;   DOTNET_ROOT=~/.local/dotnet-msft ~/.local/dotnet-msft/dotnet \
+                       ;;     tool install --global roslyn-language-server --prerelease
+                       ;; Resolved by fixed path, not exepath/PATH search: mason's
+                       ;; bin dir comes earlier on PATH and would otherwise win
+                       ;; with its own (broken, see above) roslyn-language-server.
+                       (let [msft-dotnet (vim.fn.expand "~/.local/dotnet-msft/dotnet")
+                             roslyn-bin (vim.fn.expand "~/.dotnet/tools/roslyn-language-server")]
+                         (when (and (= 1 (vim.fn.executable msft-dotnet))
+                                    (= 1 (vim.fn.executable roslyn-bin)))
+                           (vim.lsp.config :roslyn_ls
+                                           {:cmd [msft-dotnet
+                                                  (.. (vim.fn.resolve roslyn-bin) ".dll")
+                                                  :--stdio]
+                                            :cmd_env {:DOTNET_ROOT (vim.fn.expand "~/.local/dotnet-msft")}}))))
                      (vim.lsp.enable servers)
                      ;; clojure-lsp comes from nix (neovim.extraPackages), not
                      ;; mason, so it stays out of `servers` / ensure_installed
@@ -552,7 +568,7 @@
                                       ;; cljfmt), but naming cljfmt outright makes
                                       ;; a project .cljfmt.edn apply predictably.
                                       :clojure [:cljfmt]
-                                      :cs [:csharpier]
+                                      :cs (when csharp? [:csharpier])
                                       ;; Python: Sort imports/fix, then format
                                       :python [:ruff_fix :ruff_format]
                                       ;; Web & Docs: The Daemonized Prettier

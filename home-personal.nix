@@ -19,17 +19,11 @@
   home.packages = with pkgs; [
     isync
     notmuch
-    # nixpkgs builds wrangler from source (broken on aarch64-darwin); use the
-    # prebuilt npm package instead. See pkgs/wrangler/default.nix.
-    (callPackage ./pkgs/wrangler { })
-
     # DDEV local-dev for the church WordPress mirror (~/src/church/website).
     # Docker provider = OrbStack (declared as a cask in flake.nix); it supplies
     # docker + docker-compose, so these two are the only nix pieces DDEV needs.
     ddev
     mkcert
-
-    opencode
   ];
 
   # OrbStack's docker / orb / docker-compose (DDEV provider). Merges with the

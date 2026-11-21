@@ -1,26 +1,11 @@
 {
   description = "System and Home Manager configuration of cary";
 
-  # Pull prebuilt llm-agents.nix packages (claude-code, codex) from Numtide's cache
-  # instead of rebuilding from source. Only honored for trusted nix users — run
-  # `echo 'trusted-users = root cary' | sudo tee -a /etc/nix/nix.conf` once and
-  # restart nix-daemon, otherwise the daemon ignores these.
-  nixConfig = {
-    extra-substituters = [ "https://cache.numtide.com" ];
-    extra-trusted-public-keys = [ "niks3.numtide.com-1:DTx8wZduET09hRmMtKdQDxNNthLQETkc/yaX7M4qK0g=" ];
-  };
-
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
     # comby is broken in current nixos-unstable; pin to the last known-good commit.
     nixpkgs-comby.url = "github:NixOS/nixpkgs/a421ac6595024edcfbb1ef950a3712b89161c359";
     gws-cli.url = "github:googleworkspace/cli";
-    # Numtide's package set of AI coding agents; we take claude-code and codex
-    # from it.
-    # Built against its own pinned nixpkgs and served from cache.numtide.com —
-    # deliberately NOT following our nixpkgs, so we get the prebuilt binary
-    # instead of a source rebuild.
-    llm-agents.url = "github:numtide/llm-agents.nix";
     home-manager = {
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -31,7 +16,7 @@
     };
   };
 
-  outputs = { nixpkgs, nixpkgs-comby, home-manager, darwin, gws-cli, llm-agents, ... }:
+  outputs = { nixpkgs, nixpkgs-comby, home-manager, darwin, gws-cli, ... }:
     {
       # --- Linux (WSL) - Work ---
       homeConfigurations."cary@work" = let
@@ -39,7 +24,7 @@
       in home-manager.lib.homeManagerConfiguration {
         inherit pkgs;
         extraSpecialArgs = {
-          inherit nixpkgs-comby gws-cli llm-agents;
+          inherit nixpkgs-comby gws-cli;
         };
         modules = [ ./home-common.nix ./home-work.nix ];
       };
@@ -50,7 +35,7 @@
       in home-manager.lib.homeManagerConfiguration {
         inherit pkgs;
         extraSpecialArgs = {
-          inherit nixpkgs-comby gws-cli llm-agents;
+          inherit nixpkgs-comby gws-cli;
         };
         modules = [ ./home-common.nix ./home-personal.nix ];
       };
@@ -80,9 +65,6 @@
               # Newer Homebrew refuses `brew bundle --cleanup` without a force
               # flag; pass it explicitly so non-interactive activation works.
               onActivation.extraFlags = [ "--force-cleanup" ];
-              brews = [
-                "yt-dlp"
-              ];
               casks = [
                 "musescore"
                 "1password"
@@ -129,7 +111,7 @@
             home-manager.useGlobalPkgs = true;
             home-manager.useUserPackages = true;
             home-manager.extraSpecialArgs = {
-              inherit nixpkgs-comby gws-cli llm-agents;
+              inherit nixpkgs-comby gws-cli;
             };
             home-manager.users.cary = { imports = [ ./home-common.nix ./home-personal.nix ]; };
           }

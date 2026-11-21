@@ -9,6 +9,13 @@ node = "26.13.1"
 bun = "1.4.4"
 deno = "2.9.8"
 claude = "latest"
+codex = "0.171.0"
+# mise's default opencode backend (aqua:anomalyco/opencode) stops at 1.19.6;
+# current releases ship to npm under @opencode/cli.
+"npm:@opencode/cli" = "2.3.2"
+wrangler = "4.166.0"
+cloudflared = "2026.11.1"
+yt-dlp = "2026.10.26"
 # The bundled aqua recipe currently misidentifies DuckDB's release assets.
 # Select the CLI archive explicitly; DuckDB names these linux-amd64,
 # linux-arm64, osx-amd64, and osx-arm64.

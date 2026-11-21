@@ -1,4 +1,4 @@
-{ config, pkgs, lib, nixpkgs-comby, gws-cli, llm-agents, ... }:
+{ config, pkgs, lib, nixpkgs-comby, gws-cli, ... }:
 
 let
   # `pkgs.system` is deprecated; use the stdenv platform string.
@@ -11,7 +11,6 @@ in
   home.homeDirectory = if pkgs.stdenv.hostPlatform.isDarwin then "/Users/cary" else "/home/cary";
   home.sessionPath = [
     "$HOME/.local/bin"
-    "$HOME/.cache/.bun/bin"
   ];
   xdg.enable = true;
   # Symlink the nvim config to the live repo dir instead of the read-only nix
@@ -65,8 +64,6 @@ in
   programs.lazyworktree.enable = true;
   programs.lazysql.enable = true;
   programs.uv.enable = true;
-  programs.codex.enable = true;
-  programs.codex.package = llm-agents.packages.${system}.codex;
 
   programs.pandoc = {
     enable = true;
@@ -351,19 +348,21 @@ in
 
       # clojure-lsp is a GraalVM native image, so it needs no JVM itself; it
       # shells out to `clj -Spath` for classpaths, which the wrapper above
-      # satisfies. Unlike lua_ls/omnisharp this comes from nix rather than
+      # satisfies. Unlike lua_ls/fennel_language_server this comes from nix rather than
       # mason, so config.fnl enables it outside the ensure_installed list.
       clojure-lsp
 
       # Formatters
       stylua
       fnlfmt
-      csharpier
       ruff
       prettierd
       shfmt
       cljfmt
-    ];
+    ]
+    # csharpier drags in a full .NET 8 SDK (~1.1 GiB); C# is only written on
+    # the Linux/WSL work box. config.fnl skips C# tooling on the Mac to match.
+    ++ lib.optionals pkgs.stdenv.hostPlatform.isLinux [ pkgs.csharpier ];
   };
 
   # Recompile the fennel config after each rebuild. Hotpot only syncs on its
@@ -473,7 +472,6 @@ in
     jq
     sesh
     just
-    cloudflared
 
     ffmpeg
 
@@ -504,9 +502,6 @@ in
     poppler-utils
     qpdf
     typst
-    # Renders the mermaid fences in the pandoc reMarkable preset. Ships its own
-    # wrapped chromium, so the filter's chromium probe stays dormant.
-    mermaid-cli
 
     # Network & sync
     rclone
@@ -541,11 +536,15 @@ in
 
     (pkgs.callPackage ./pkgs/ferrite.nix { })
   ]
-  # Rootless podman (configured via ~/.config/containers below) is for the
-  # Linux boxes only; the Mac uses OrbStack.
+  # Linux only. Rootless podman (configured via ~/.config/containers below):
+  # the Mac uses OrbStack.
   ++ lib.optionals pkgs.stdenv.hostPlatform.isLinux [
     pkgs.podman
     pkgs.podman-compose
+    # Renders the mermaid fences in the pandoc reMarkable preset. Linux only:
+    # it wraps nixpkgs chromium, which doesn't exist for macOS, so on the Mac
+    # it failed at launch. mermaid.lua leaves the fences as code without it.
+    pkgs.mermaid-cli
   ];
 
   fonts.fontconfig.enable = true;

@@ -6,7 +6,7 @@ Configuration is split into modular files that are composed per-machine:
 
 - **`home-common.nix`** -- shared config (neovim, tmux, zsh, git base, SSH hosts, packages)
 - **`home-work.nix`** -- work-specific (WSL aliases, awscli, ODBC, MdClarity repos, git work identity)
-- **`home-personal.nix`** -- personal (git/jj personal identity, mail tools, wrangler, DDEV, personal SSH hosts)
+- **`home-personal.nix`** -- personal (git/jj personal identity, mail tools, DDEV, personal SSH hosts)
 
 The `flake.nix` defines three entry points:
 
@@ -81,7 +81,7 @@ Home Manager's module system merges attributes from all imported modules, so you
 
 ## Custom packages
 
-Packages not in nixpkgs live in `pkgs/` (e.g. `taws`, `linear-cli`) and are pulled in with `pkgs.callPackage` from the module that installs them. Packages from other flakes (llm-agents, gws-cli, ...) are passed to modules via `extraSpecialArgs`.
+Packages not in nixpkgs live in `pkgs/` (e.g. `taws`, `linear-cli`) and are pulled in with `pkgs.callPackage` from the module that installs them. Packages from other flakes (gws-cli, ...) are passed to modules via `extraSpecialArgs`.
 
 ## Adding a neovim plugin
 
@@ -110,7 +110,7 @@ To remove a plugin, delete its spec and run `:Lazy clean`.
 nix flake update
 
 # Update a single input
-nix flake update llm-agents
+nix flake update gws-cli
 
 # Then re-apply
 darwin-rebuild switch --flake ~/.config/home-manager#cary        # macOS
@@ -120,7 +120,8 @@ home-manager switch --flake ~/.config/home-manager#cary@home     # Linux persona
 
 ### Fast-moving developer tools
 
-Node, Bun, Deno, DuckDB, and Claude Code are managed by `mise`, not Nix. The
+Node, Bun, Deno, DuckDB, Claude Code, Codex, opencode, wrangler,
+cloudflared, and yt-dlp are managed by `mise`, not Nix. The
 global selections are tracked in `dotfiles/mise/config.toml`; install them
 after applying Home Manager:
 

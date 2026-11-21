@@ -84,7 +84,9 @@
                 "yt-dlp"
               ];
               casks = [
+                "musescore"
                 "1password"
+                "gimp"
                 "libreoffice"
                 "font-raleway"
                 "1password-cli"
